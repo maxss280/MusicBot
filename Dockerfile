@@ -34,7 +34,7 @@ RUN apk del .build-deps
 RUN apk update && apk add --no-cache \
   ca-certificates \
   ffmpeg \
-  opus-dev \
+  opus \
   libffi \
   libsodium
 

@@ -54,13 +54,19 @@ def get_bot_version(git_bin: str) -> str:
     try:
         # Get the last release tag, number of commits since, and g{commit_id} as string.
         ver_p1 = (
-            subprocess.check_output([git_bin, "describe", "--tags", "--always"])
+            subprocess.check_output(
+                [git_bin, "describe", "--tags", "--always"],
+                stderr=subprocess.DEVNULL
+            )
             .decode("ascii")
             .strip()
         )
         # Check status of file modifications.
         ver_p2 = (
-            subprocess.check_output([git_bin, "status", "-suno", "--porcelain"])
+            subprocess.check_output(
+                [git_bin, "status", "-suno", "--porcelain"],
+                stderr=subprocess.DEVNULL
+            )
             .decode("ascii")
             .strip()
         )
@@ -98,7 +104,10 @@ def get_bot_remote_url(git_bin: str) -> str:
     try:
         # Try to get the URL - this may fail if no remotes exist
         url = (
-            subprocess.check_output([git_bin, "ls-remote", "--get-url"])
+            subprocess.check_output(
+                [git_bin, "ls-remote", "--get-url"],
+                stderr=subprocess.DEVNULL
+            )
             .decode("ascii")
             .strip()
         )
@@ -115,7 +124,10 @@ def check_bot_updates(git_bin: str, branch_name: str) -> Optional[Tuple[str, str
     """Attempt a dry-run with git fetch to detect updates on remote."""
     try:
         updates = (
-            subprocess.check_output([git_bin, "fetch", "--dry-run"])
+            subprocess.check_output(
+                [git_bin, "fetch", "--dry-run"],
+                stderr=subprocess.DEVNULL
+            )
             .decode("utf8")
             .split("\n")
         )
