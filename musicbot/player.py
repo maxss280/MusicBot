@@ -438,7 +438,18 @@ class MusicPlayer(EventEmitter, Serializable):
                 # Verify opus is loaded before attempting playback
                 if not opus.is_loaded():
                     log.error("Opus library not loaded! Cannot play audio.")
-                    raise RuntimeError("Opus library is not loaded")
+                    log.error("Opus _lib state: %s", getattr(opus, '_lib', 'NOT SET'))
+                    # Try to reload opus
+                    try:
+                        log.info("Attempting to reload opus library...")
+                        opus._load_default()  # pylint: disable=protected-access
+                        if opus.is_loaded():
+                            log.info("Opus library successfully reloaded")
+                        else:
+                            log.error("Opus reload failed, library still not loaded")
+                    except Exception as e:
+                        log.error("Failed to reload opus: %s", e)
+                        raise RuntimeError("Opus library is not loaded") from e
                 
                 self.voice_client.play(self._source, after=self._playback_finished)
 

@@ -16,10 +16,15 @@ def load_opus_lib() -> None:
     log.info("Attempting to load opus library...")
     try:
         opus._load_default()  # pylint: disable=protected-access
-        log.info("Opus library loaded successfully")
+        lib_info = getattr(opus, '_lib', 'UNKNOWN')
+        log.info("Opus library loaded successfully: %s", lib_info)
         return
     except OSError as e:
         log.error("Failed to load opus library: %s", e)
+        # Try to find the library manually
+        import ctypes.util
+        lib_path = ctypes.util.find_library('opus')
+        log.error("ctypes.util.find_library('opus') returned: %s", lib_path)
         pass
 
     raise RuntimeError("Could not load an opus lib.")
