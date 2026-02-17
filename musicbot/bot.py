@@ -2784,8 +2784,6 @@ class MusicBot(discord.Client):
                                 if is_emoji
                                 else ""
                             ),
-                        ).format(
-                            command_prefix=prefix if not is_emoji else "",
                         ),
                         delete_after=60,
                     )
