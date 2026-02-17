@@ -1,4 +1,4 @@
-pynacl >= 23.0.0
+pynacl >= 1.7.0
 discord.py [voice, speed] >= 2.4.0
 pip >= 24.0.0
 yt-dlp >= 2024.0.0
