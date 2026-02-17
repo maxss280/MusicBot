@@ -1,10 +1,9 @@
-pynacl
-#discord.py [voice, speed] >= 2.4.0
-discord.py [voice, speed] @ git+https://github.com/Rapptz/discord.py
-pip
-yt-dlp
-colorlog
+pynacl >= 23.0.0
+discord.py [voice, speed] >= 2.4.0
+pip >= 24.0.0
+yt-dlp >= 2024.0.0
+colorlog >= 6.8.0
 colorama >= 0.4.6; sys_platform == 'win32'
-cffi --only-binary all; sys_platform == 'win32'
-certifi
-configupdater
+cffi >= 1.16.0; sys_platform == 'win32'
+certifi >= 2024.0.0
+configupdater >= 3.2.0

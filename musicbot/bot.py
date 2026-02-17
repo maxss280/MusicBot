@@ -6910,7 +6910,7 @@ class MusicBot(discord.Client):
                     "cmd-restart-soft",
                     "{emoji} Restarting current instance...",
                 ).format(
-                    emoji="\u21A9\uFE0F",  # Right arrow curving left
+                    emoji="\u21a9\ufe0f",  # Right arrow curving left
                 ),
             )
         elif opt == "full":
@@ -6920,7 +6920,7 @@ class MusicBot(discord.Client):
                     "cmd-restart-full",
                     "{emoji} Restarting bot process...",
                 ).format(
-                    emoji="\U0001F504",  # counterclockwise arrows
+                    emoji="\U0001f504",  # counterclockwise arrows
                 ),
             )
         elif opt == "uppip":
@@ -6930,7 +6930,7 @@ class MusicBot(discord.Client):
                     "cmd-restart-uppip",
                     "{emoji} Will try to upgrade required pip packages and restart the bot...",
                 ).format(
-                    emoji="\U0001F4E6",  # package / box
+                    emoji="\U0001f4e6",  # package / box
                 ),
             )
         elif opt == "upgit":
@@ -6940,7 +6940,7 @@ class MusicBot(discord.Client):
                     "cmd-restart-upgit",
                     "{emoji} Will try to update bot code with git and restart the bot...",
                 ).format(
-                    emoji="\U0001F5C3\uFE0F",  # card box
+                    emoji="\U0001f5c3\ufe0f",  # card box
                 ),
             )
         elif opt == "upgrade":
@@ -6950,7 +6950,7 @@ class MusicBot(discord.Client):
                     "cmd-restart-upgrade",
                     "{emoji} Will try to upgrade everything and restart the bot...",
                 ).format(
-                    emoji="\U0001F310",  # globe with meridians
+                    emoji="\U0001f310",  # globe with meridians
                 ),
             )
 

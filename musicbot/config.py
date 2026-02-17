@@ -1037,7 +1037,7 @@ class Config:
                 "Cookies are not recommended, may not be supported, and may totally break.\n"
                 "Copying cookies from your web-browser risks exposing personal data and \n"
                 "in the best case can result in your accounts being banned!\n\n"
-                "You have been warned!  Good Luck!  \U0001F596\n"
+                "You have been warned!  Good Luck!  \U0001f596\n"
             )
             # make sure the user sees this.
             time.sleep(3)

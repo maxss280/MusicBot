@@ -20,7 +20,11 @@ class EventEmitter:
         that are also co-routines.
         """
         self._events: EventDict = collections.defaultdict(list)
-        self.loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+        try:
+            self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
         self._task_pool: Set[AsyncTask] = set()
 
     def emit(self, event: str, *args: Any, **kwargs: Any) -> None:

@@ -366,7 +366,11 @@ class Spotify:
         self.guest_mode: bool = client_id is None or client_secret is None
 
         self.aiosession = aiosession
-        self.loop = loop if loop else asyncio.get_event_loop()
+        try:
+            self.loop = loop if loop else asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = loop if loop else asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
 
         self._token: Optional[Dict[str, Any]] = None
 

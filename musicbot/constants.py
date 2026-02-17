@@ -143,12 +143,12 @@ DISCORD_MSG_CHAR_LIMIT: int = 2000
 
 
 EMOJI_CHECK_MARK_BUTTON: str = "\u2705"
-EMOJI_CROSS_MARK_BUTTON: str = "\u274E"
-EMOJI_STOP_SIGN: str = "\U0001F6D1"
+EMOJI_CROSS_MARK_BUTTON: str = "\u274e"
+EMOJI_STOP_SIGN: str = "\U0001f6d1"
 EMOJI_IDLE_ICON: str = "\U0001f634"  # same as \N{SLEEPING FACE}
-EMOJI_PLAY_ICON: str = "\u25B6"  # add \uFE0F to make button
-EMOJI_PAUSE_ICON: str = "\u23F8\uFE0F"  # add \uFE0F to make button
-EMOJI_LAST_ICON: str = "\u23ED\uFE0F"  # next track button
-EMOJI_FIRST_ICON: str = "\u23EE\uFE0F"  # last track button
-EMOJI_NEXT_ICON: str = "\u23E9"  # fast-forward button
-EMOJI_PREV_ICON: str = "\u23EA"  # rewind button
+EMOJI_PLAY_ICON: str = "\u25b6"  # add \uFE0F to make button
+EMOJI_PAUSE_ICON: str = "\u23f8\ufe0f"  # add \uFE0F to make button
+EMOJI_LAST_ICON: str = "\u23ed\ufe0f"  # next track button
+EMOJI_FIRST_ICON: str = "\u23ee\ufe0f"  # last track button
+EMOJI_NEXT_ICON: str = "\u23e9"  # fast-forward button
+EMOJI_PREV_ICON: str = "\u23ea"  # rewind button

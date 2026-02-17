@@ -25,3 +25,8 @@ media/
 
 docker-compose.yml
 config/autoplaylist.cachemap.json
+
+# Agent development files
+AGENTS.md
+agents_playground/
+agents_playground/*

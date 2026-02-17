@@ -96,15 +96,19 @@ def get_bot_branch(git_bin: str) -> str:
 def get_bot_remote_url(git_bin: str) -> str:
     """Uses git to find the current repo's remote URL."""
     try:
+        # Try to get the URL - this may fail if no remotes exist
         url = (
             subprocess.check_output([git_bin, "ls-remote", "--get-url"])
             .decode("ascii")
             .strip()
         )
+    except subprocess.CalledProcessError:
+        # No remotes configured - this is OK, just return empty
+        return ""
     except (subprocess.SubprocessError, OSError, ValueError) as e:
         print(f"Failed getting repo URL due to:  {str(e)}")
         url = ""
-    return url
+    return url if url else ""
 
 
 def check_bot_updates(git_bin: str, branch_name: str) -> Optional[Tuple[str, str]]:
@@ -423,20 +427,25 @@ def main() -> None:
         print(f"Current git branch name:  {branch_name}")
     if repo_url:
         print(f"Current git repo URL:  {repo_url}")
-
-    # Check for updates.
-    print("Checking remote repo for bot updates...")
-    updates = check_bot_updates(git_bin, branch_name)
-    if not updates:
-        print("No updates found for bot source code.")
     else:
-        print(f"Updates are available, latest commit ID is:  {updates[1]}")
-        do_bot_upgrade = yes_or_no_input("Would you like to update?")
-        if do_bot_upgrade:
-            run_or_raise_error(
-                [git_bin, "pull"],
-                "Could not update the bot. You will need to run 'git pull' manually.",
-            )
+        print("Note: No remote repository configured. Use `git remote add <name> <url>` to add one.")
+
+    # Check for updates only if remote exists
+    if repo_url:
+        print("Checking remote repo for bot updates...")
+        updates = check_bot_updates(git_bin, branch_name)
+        if not updates:
+            print("No updates found for bot source code.")
+        else:
+            print(f"Updates are available, latest commit ID is:  {updates[1]}")
+            do_bot_upgrade = yes_or_no_input("Would you like to update?")
+            if do_bot_upgrade:
+                run_or_raise_error(
+                    [git_bin, "pull"],
+                    "Could not update the bot. You will need to run 'git pull' manually.",
+                )
+    else:
+        print("Skipping remote update check - no remote configured.")
 
     update_deps()
     update_ffmpeg()
