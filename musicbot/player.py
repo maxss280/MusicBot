@@ -10,6 +10,7 @@ from threading import Thread
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from discord import AudioSource, FFmpegPCMAudio, PCMVolumeTransformer, VoiceClient
+from discord import opus
 
 from .constructs import Serializable, Serializer, SkipState
 from .entry import LocalFilePlaylistEntry, StreamPlaylistEntry, URLPlaylistEntry
@@ -433,6 +434,12 @@ class MusicPlayer(EventEmitter, Serializable):
                 log.voicedebug(  # type: ignore[attr-defined]
                     "Playing %r using %r", self._source, self.voice_client
                 )
+                
+                # Verify opus is loaded before attempting playback
+                if not opus.is_loaded():
+                    log.error("Opus library not loaded! Cannot play audio.")
+                    raise RuntimeError("Opus library is not loaded")
+                
                 self.voice_client.play(self._source, after=self._playback_finished)
 
                 self._current_player = self.voice_client
