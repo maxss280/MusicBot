@@ -27,7 +27,6 @@ try:
     VERSION = f"{_VERSION_P1}{_VERSION_P2}"
 
 except (subprocess.SubprocessError, OSError, ValueError) as e:
-    print(f"Failed setting version constant, reason:  {str(e)}")
     VERSION = "version_unknown"
 
 # constant string exempt from i18n
