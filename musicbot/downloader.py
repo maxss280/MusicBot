@@ -8,7 +8,6 @@ import logging
 import os
 import pathlib
 from collections import UserDict
-from concurrent.futures import ThreadPoolExecutor
 from pprint import pformat
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -21,7 +20,7 @@ from yt_dlp.networking.exceptions import (  # type: ignore[import-untyped]
 from yt_dlp.utils import DownloadError  # type: ignore[import-untyped]
 from yt_dlp.utils import UnsupportedError
 
-from .constants import DEFAULT_MAX_INFO_DL_THREADS, DEFAULT_MAX_INFO_REQUEST_TIMEOUT
+from .constants import DEFAULT_MAX_INFO_REQUEST_TIMEOUT
 from .exceptions import ExtractionError, MusicbotException
 from .spotify import Spotify
 from .ytdlp_oauth2_plugin import enable_ytdlp_oauth2_plugin
@@ -81,11 +80,6 @@ class Downloader:
         """
         self.bot: "MusicBot" = bot
         self.download_folder: pathlib.Path = bot.config.audio_cache_path
-        # NOTE: this executor may not be good for long-running downloads...
-        self.thread_pool = ThreadPoolExecutor(
-            max_workers=DEFAULT_MAX_INFO_DL_THREADS,
-            thread_name_prefix="MB_Downloader",
-        )
 
         # force ytdlp and HEAD requests to use the same UA string.
         # If the constant is set, use that, otherwise use dynamic selection.
@@ -474,8 +468,7 @@ class Downloader:
 
         # Actually call YoutubeDL extract_info.
         try:
-            data = await self.bot.loop.run_in_executor(
-                self.thread_pool,
+            data = await asyncio.to_thread(
                 functools.partial(
                     self.unsafe_ytdl.extract_info, song_subject, *args, **kwargs
                 ),
@@ -509,8 +502,7 @@ class Downloader:
             )
             song_subject = song_subject.replace(":", " ")
             # TODO: maybe this also needs some exception handling...
-            data = await self.bot.loop.run_in_executor(
-                self.thread_pool,
+            data = await asyncio.to_thread(
                 functools.partial(
                     self.unsafe_ytdl.extract_info, song_subject, *args, **kwargs
                 ),
@@ -543,13 +535,12 @@ class Downloader:
 
     async def safe_extract_info(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
-        Awaits an event loop executor to call extract_info in a thread pool.
+        Awaits an asyncio thread to call extract_info.
         Uses an instance of YoutubeDL with errors explicitly ignored to
         call extract_info with all arguments passed to this function.
         """
         log.noise(f"Called safe_extract_info with:  {args}, {kwargs}")  # type: ignore[attr-defined]
-        return await self.bot.loop.run_in_executor(
-            self.thread_pool,
+        return await asyncio.to_thread(
             functools.partial(self.safe_ytdl.extract_info, *args, **kwargs),
         )
 

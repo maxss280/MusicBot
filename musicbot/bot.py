@@ -2086,15 +2086,6 @@ class MusicBot(discord.Client):
             ) from e
 
         finally:
-            # Shut down the thread pool executor.
-            log.info("Waiting for download threads to finish up...")
-            # We can't kill the threads in ThreadPoolExecutor.  User can Ctrl+C though.
-            # We can pass `wait=False` and carry on with "shutdown" but threads
-            # will stay until they're done.  We wait to keep it clean...
-            tps_args: Dict[str, Any] = {}
-            if sys.version_info >= (3, 9):
-                tps_args["cancel_futures"] = True
-            self.downloader.thread_pool.shutdown(**tps_args)
 
             # Inspect all waiting tasks and either cancel them or let them finish.
             pending_tasks = []
