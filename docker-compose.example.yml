@@ -1,8 +1,13 @@
 services:
   musicbot:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_REPO: https://github.com/maxss280/MusicBot.git
+        GIT_BRANCH: master
     volumes:
       - ./config:/musicbot/config/
       - ./audio_cache:/musicbot/audio_cache
       - ./data:/musicbot/data
       - ./logs:/musicbot/logs
+    restart: unless-stopped

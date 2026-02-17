@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [[ ! -f "/musicbot/config/example_options.ini" ]]; then
+if [[ -z "$(ls -A /musicbot/config 2>/dev/null)" ]]; then
     cp -r /musicbot/sample_config/* /musicbot/config
 fi
 
