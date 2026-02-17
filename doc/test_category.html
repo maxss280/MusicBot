@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .category { padding: 10px; border: 1px solid #ccc; margin: 10px; }
+        .category-header { display: flex; cursor: pointer; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; background: #eee; }
+        .category.expanded .category-content { max-height: 200px; }
+        .category-icon { margin-left: 10px; }
+    </style>
+</head>
+<body>
+<div id='test-area'>
+    <div class='category'>
+        <div class='category-header'><span>Category 1</span><span class='category-icon'>▶</span></div>
+        <div class='category-content'><div>Item 1.1</div><div>Item 1.2</div></div>
+    </div>
+    <div class='category'>
+        <div class='category-header'><span>Category 2</span><span class='category-icon'>▶</span></div>
+        <div class='category-content'><div>Item 2.1</div><div>Item 2.2</div></div>
+    </div>
+</div>
+
+<script>
+const doc = document;
+doc.querySelectorAll('.category').forEach(category => {
+    const header = category.querySelector('.category-header');
+    const content = category.querySelector('.category-content');
+    
+    if (header && content) {
+        header.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isExpanded = category.classList.contains('expanded');
+            
+            doc.querySelectorAll('.category').forEach(c => {
+                if (c !== category) {
+                    c.classList.remove('expanded');
+                    const cContent = c.querySelector('.category-content');
+                    if (cContent) cContent.style.maxHeight = null;
+                }
+            });
+            
+            if (!isExpanded) {
+                category.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                category.classList.remove('expanded');
+                content.style.maxHeight = null;
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

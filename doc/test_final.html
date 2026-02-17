@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Category Toggle Test</title>
+    <style>
+        .category { padding: 10px; border: 1px solid #ccc; margin: 5px; }
+        .category-header { display: flex; cursor: pointer; }
+        .category-content { max-height: 0; overflow: hidden; transition: max-height 0.3s; background: #eee; }
+        .category.expanded .category-content { max-height: 100px; }
+        .category-icon { margin-left: 10px; }
+    </style>
+</head>
+<body>
+<div class="category">
+    <div class="category-header"><span>Test Category</span><span class="category-icon">▼</span></div>
+    <div class="category-content"><p>This is test content</p></div>
+</div>
+
+<script>
+document.querySelectorAll('.category').forEach(category => {
+    const header = category.querySelector('.category-header');
+    const content = category.querySelector('.category-content');
+    
+    if (header && content) {
+        header.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isExpanded = category.classList.contains('expanded');
+            
+            document.querySelectorAll('.category').forEach(c => {
+                if (c !== category) {
+                    c.classList.remove('expanded');
+                    const cContent = c.querySelector('.category-content');
+                    if (cContent) cContent.style.maxHeight = null;
+                }
+            });
+            
+            if (!isExpanded) {
+                category.classList.add('expanded');
+                content.style.maxHeight = content.scrollHeight + 'px';
+            } else {
+                category.classList.remove('expanded');
+                content.style.maxHeight = null;
+            }
+        });
+    }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MusicBot Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background: #1a1c23;
+            color: #e0e0e0;
+            overflow-y: auto;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #2d303a;
+        }
+        
+        .sidebar-header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4da6ff;
+            margin: 0;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .sidebar-header h1:hover {
+            color: #6db3ff;
+        }
+        
+        .search-box {
+            margin: 15px 0;
+            padding: 10px;
+            background: #2d303a;
+            border: 1px solid #2d303a;
+            border-radius: 6px;
+            color: #e0e0e0;
+            width: 100%;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .search-box:focus {
+            border-color: #4da6ff;
+        }
+        
+        .category {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid #2d303a;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .category-header .category-name {
+            user-select: none;
+        }
+        
+        .category:hover {
+            background: #252832;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .category-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #a0a0a0;
+        }
+        
+        .category-icon {
+            font-size: 0.8rem;
+            color: #606060;
+            transition: transform 0.3s;
+        }
+        
+        .category.expanded .category-icon {
+            transform: rotate(90deg);
+        }
+        
+        .category-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #2d303a;
+        }
+        
+        .doc-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+            border-left: 2px solid transparent;
+        }
+        
+        .doc-item:hover {
+            background: #252832;
+            border-left: 2px solid #4da6ff;
+        }
+        
+        .doc-item.active {
+            background: #252832;
+            border-left: 2px solid #4da6ff;
+        }
+        
+        /* Main Content Styles */
+        .main-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            background: #f5f7fa;
+            padding: 40px;
+        }
+        
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .content-header {
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+        
+        .content-header h2 {
+            font-size: 2rem;
+            color: #1a1c23;
+            margin: 0;
+        }
+        
+        .content-header .meta {
+            font-size: 0.875rem;
+            color: #888;
+            margin-top: 10px;
+        }
+        
+        .doc-section {
+            margin-bottom: 40px;
+        }
+        
+        .doc-section h3 {
+            font-size: 1.375rem;
+            color: #1a1c23;
+            margin: 20px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .doc-section p {
+            margin: 10px 0;
+            color: #555;
+        }
+        
+        .doc-section ul, .doc-section ol {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+        
+        .doc-section li {
+            margin: 8px 0;
+            color: #555;
+        }
+        
+        .code-block {
+            background: #2d303a;
+            color: #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .doc-section code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+            color: #c72c41;
+        }
+        
+        .doc-section pre {
+            background: #2d303a;
+            color: #e0e0e0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.875rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .doc-section pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 60vh;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .content-wrapper {
+                padding: 20px;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>MusicBot Docs</h1>
+                <input type="text" class="search-box" placeholder="Search documentation...">
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">1. Core Module</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="musicbot-class">MusicBot Class</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">2. Music Player</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="musicplayer-class">MusicPlayer Class</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">3. Playlist</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="playlist-class">Playlist Class</div>
+                    <div class="doc-item" data-target="entry-classes">Entry Classes</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">4. Configuration</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="config-classes">Config Classes</div>
+                    <div class="doc-item" data-target="constants">Constants</div>
+                    <div class="doc-item" data-target="constructs">Constructs</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">5. Permissions</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="permissions-classes">Permissions Classes</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">6. Utilities</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="utils">Utils</div>
+                    <div class="doc-item" data-target="filecache">FileCache</div>
+                    <div class="doc-item" data-target="json">Json</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">7. Downloader</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="downloader">Downloader</div>
+                    <div class="doc-item" data-target="ytdlp-oauth2">YtdlpOAuth2</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">8. Spotify</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="spotify-classes">Spotify Classes</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">9. Autoplaylist</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="autoplaylist">Autoplaylist</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">10. Exceptions</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="exceptions">All Exceptions</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">11. Events</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="event-emitter">EventEmitter</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">12. Aliases</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="aliases">Aliases</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">13. Opus Loader</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="opus-loader">Opus Loader</div>
+                </div>
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">14. Configuration Files</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="main-config">Main Config (options.ini)</div>
+                    <div class="doc-item" data-target="permissions-config">Permissions (permissions.ini)</div>
+                    <div class="doc-item" data-target="command-aliases">Command Aliases (aliases.json)</div>
+                    <div class="doc-item" data-target="autoplaylist-config">Autoplaylist (autoplaylist.txt)</div>
+                    <div class="doc-item" data-target="i18n-config">Internationalization (i18n)</div>
+                    <div class="doc-item" data-target="blocklists">Blocklists (users/songs)</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="content-wrapper">
+                <div class="content-header">
+                    <h2 id="title">MusicBot Documentation</h2>
+                    <div class="meta" id="meta">Welcome to the comprehensive MusicBot documentation</div>
+                </div>
+
+                <div class="doc-section" id="content">
+                    <p>This documentation covers all classes, methods, and components of the MusicBot project. Use the sidebar to navigate between different categories.</p>
+                    
+                    <h3>Documentation Structure</h3>
+                    <ul>
+                        <li><strong>Core Module</strong> - Main MusicBot class and bot initialization</li>
+                        <li><strong>Music Player</strong> - MusicPlayer class for audio playback</li>
+                        <li><strong>Playlist</strong> - Playlist management and entry types</li>
+                        <li><strong>Configuration</strong> - Config system and constants</li>
+                        <li><strong>Permissions</strong> - User permissions system</li>
+                        <li><strong>Utilities</strong> - Helper functions and utilities</li>
+                        <li><strong>Downloader</strong> - Media downloading functionality</li>
+                        <li><strong>Spotify</strong> - Spotify integration</li>
+                        <li><strong>Autoplaylist</strong> - Automatic playlist generation</li>
+                        <li><strong>Exceptions</strong> - Custom exception hierarchy</li>
+                        <li><strong>Events</strong> - Event emission system</li>
+                        <li><strong>Aliases</strong> - Command aliasing</li>
+                        <li><strong>Opus Loader</strong> - Opus library loading</li>
+                        <li><strong>Configuration Files</strong> - Config file structure and options</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Sidebar home link
+        document.querySelector('.sidebar-header h1').addEventListener('click', () => {
+            document.getElementById('title').textContent = 'MusicBot Documentation';
+            document.getElementById('meta').textContent = 'Welcome to the comprehensive MusicBot documentation';
+            document.getElementById('content').innerHTML = `
+                <p>This documentation covers all classes, methods, and components of the MusicBot project. Use the sidebar to navigate between different categories.</p>
+                
+                <h3>Documentation Structure</h3>
+                <ul>
+                    <li><strong>Core Module</strong> - Main MusicBot class and bot initialization</li>
+                    <li><strong>Music Player</strong> - MusicPlayer class for audio playback</li>
+                    <li><strong>Playlist</strong> - Playlist management and entry types</li>
+                    <li><strong>Configuration</strong> - Config system and constants</li>
+                    <li><strong>Permissions</strong> - User permissions system</li>
+                    <li><strong>Utilities</strong> - Helper functions and utilities</li>
+                    <li><strong>Downloader</strong> - Media downloading functionality</li>
+                    <li><strong>Spotify</strong> - Spotify integration</li>
+                    <li><strong>Autoplaylist</strong> - Automatic playlist generation</li>
+                    <li><strong>Exceptions</strong> - Custom exception hierarchy</li>
+                    <li><strong>Events</strong> - Event emission system</li>
+                    <li><strong>Aliases</strong> - Command aliasing</li>
+                    <li><strong>Opus Loader</strong> - Opus library loading</li>
+                    <li><strong>Configuration Files</strong> - Config file structure and options</li>
+                </ul>
+            `;
+            
+            // Close all categories
+            document.querySelectorAll('.category').forEach(c => {
+                c.classList.remove('expanded');
+                c.querySelector('.category-content').style.maxHeight = null;
+            });
+        });
+
+        // Category toggle - attach listener to header for direct click detection
+        document.querySelectorAll('.category').forEach(category => {
+            const header = category.querySelector('.category-header');
+            const content = category.querySelector('.category-content');
+            
+            if (header && content) {
+                header.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    
+                    const isExpanded = category.classList.contains('expanded');
+                    
+                    // Close all other categories
+                    document.querySelectorAll('.category').forEach(c => {
+                        if (c !== category) {
+                            c.classList.remove('expanded');
+                            const cContent = c.querySelector('.category-content');
+                            if (cContent) cContent.style.maxHeight = null;
+                        }
+                    });
+                    
+                    // Toggle current category
+                    if (!isExpanded) {
+                        category.classList.add('expanded');
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                    } else {
+                        category.classList.remove('expanded');
+                        content.style.maxHeight = null;
+                    }
+                });
+            }
+        });
+
+        // Document content mapping
+        const docs = {
+            'musicbot-class': {
+                title: 'MusicBot Class',
+                meta: 'Main bot class that extends discord.Client',
+                content: `
+                    <h3>Class Overview</h3>
+                    <div class="code-block">class MusicBot(discord.Client):</div>
+                    <p>The main MusicBot class, handles the bot itself and all commands.</p>
+                    
+                    <h3>Key Attributes</h3>
+                    <ul>
+                        <li><strong>config</strong> - Configuration settings for the bot</li>
+                        <li><strong>permissions</strong> - User permissions system</li>
+                        <li><strong>playlist</strong> - Playlist manager</li>
+                        <li><strong>player</strong> - Music player instance</li>
+                        <li><strong>autoPlaylist</strong> - Automatic playlist manager</li>
+                        <li><strong>aliases</strong> - Command aliases system</li>
+                    </ul>
+                    
+                    <h3>Core Methods</h3>
+                    <div class="code-block">def __init__(self, config_file=None, **kwargs)</div>
+                    <p>Initialize the bot with configuration and prepare all systems.</p>
+                    
+                    <div class="code-block">async def setup_hook(self)</div>
+                    <p>Async initialization before login. Configures aiohttp session, initializes Spotify integration, and starts network monitoring.</p>
+                    
+                    <div class="code-block">async def on_ready(self)</div>
+                    <p>Called when the bot has successfully connected to Discord.</p>
+                `
+            },
+            
+            'musicplayer-class': {
+                title: 'MusicPlayer Class',
+                meta: 'Per-guild music player instance',
+                content: `
+                    <h3>Class Overview</h3>
+                    <div class="code-block">class MusicPlayer:</div>
+                    <p>MusicPlayer class handles audio playback and queue management for each guild.</p>
+                    
+                    <h3>Player States</h3>
+                    <ul>
+                        <li><strong>PLAYING</strong> - Currently streaming audio</li>
+                        <li><strong>PAUSED</strong> - Playback paused</li>
+                        <li><strong>STOPPED</strong> - No playback active</li>
+                    </ul>
+                    
+                    <h3>Key Attributes</h3>
+                    <ul>
+                        <li><strong>voice_client</strong> - Discord voice connection</li>
+                        <li><strong>current_entry</strong> - Currently playing song</li>
+                        <li><strong>playlist</strong> - Queue of songs</li>
+                        <li><strong>volume</strong> - Playback volume (0.0-1.0)</li>
+                    </ul>
+                    
+                    <h3>Playback Methods</h3>
+                    <div class="code-block">async def play(self, entry, **kwargs)</div>
+                    <p>Play a playlist entry from the queue.</p>
+                    
+                    <div class="code-block">def pause(self)</div>
+                    <p>Pause current playback.</p>
+                    
+                    <div class="code-block">def resume(self)</div>
+                    <p>Resume paused playback.</p>
+                    
+                    <div class="code-block">def stop(self)</div>
+                    <p>Stop playback and clear queue.</p>
+                    
+                    <div class="code-block">def skip(self)</div>
+                    <p>Skip to next song in queue.</p>
+                `
+            },
+            
+            'playlist-class': {
+                title: 'Playlist Class',
+                meta: 'Playlist manager for song queue management',
+                content: `
+                    <h3>Class Overview</h3>
+                    <div class="code-block">class Playlist:</div>
+                    <p>Playlist class manages the song queue and playlist operations.</p>
+                    
+                    <h3>Key Features</h3>
+                    <ul>
+                        <li>Queue management with add/remove operations</li>
+                        <li>Shuffle and skip functionality</li>
+                        <li>Entry tracking and state management</li>
+                    </ul>
+                    
+                    <h3>Main Methods</h3>
+                    <div class="code-block">def __init__(self, bot)</div>
+                    <p>Initialize the playlist manager.</p>
+                    
+                    <div class="code-block">async def add_entry(self, entry)</div>
+                    <p>Add a playlist entry to the queue.</p>
+                    
+                    <div class="code-block">def get_next(self)</div>
+                    <p>Get the next entry in the queue.</p>
+                    
+                    <div class="code-block">def shuffle(self)</div>
+                    <p>Shuffle the current queue.</p>
+                    
+                    <div class="code-block">def remove_entry(self, index)</div>
+                    <p>Remove an entry at the specified index.</p>
+                `
+            },
+            
+            'entry-classes': {
+                title: 'Entry Classes',
+                meta: 'Playlist entry types for different media sources',
+                content: `
+                    <h3>BasePlaylistEntry</h3>
+                    <div class="code-block">class BasePlaylistEntry:</div>
+                    <p>Base class for all playlist entries with common functionality.</p>
+                    
+                    <h3>URLPlaylistEntry</h3>
+                    <div class="code-block">class URLPlaylistEntry(BasePlaylistEntry):</div>
+                    <p>Entry for URL-based media sources including YouTube, SoundCloud, etc.</p>
+                    
+                    <h3>StreamPlaylistEntry</h3>
+                    <div class="code-block">class StreamPlaylistEntry(BasePlaylistEntry):</div>
+                    <p>Entry for live streaming sources.</p>
+                    
+                    <h3>Key Methods</h3>
+                    <ul>
+                        <li><code>__init__</code> - Initialize entry with URL and metadata</li>
+                        <li><code>download</code> - Download the media file</li>
+                        <li><code>get_info</code> - Get media information</li>
+                        <li><code>get_duration</code> - Get media duration</li>
+                    </ul>
+                `
+            },
+            
+            'config-classes': {
+                title: 'Config Classes',
+                meta: 'Configuration management system',
+                content: `
+                    <h3>Config Class</h3>
+                    <div class="code-block">class Config:</div>
+                    <p>Manages bot configuration loaded from INI files.</p>
+                    
+                    <h3>Attribute Sections</h3>
+                    <ul>
+                        <li><strong>Credentials</strong> - Bot token and owner info</li>
+                        <li><strong>MusicBot</strong> - Bot behavior settings</li>
+                        <li><strong>Files</strong> - File paths and directories</li>
+                        <li><strong>Audio</strong> - Audio encoding settings</li>
+                        <li><strong>Spotify</strong> - Spotify integration settings</li>
+                    </ul>
+                    
+                    <h3>Key Methods</h3>
+                    <div class="code-block">def __init__(self, config_file=None)</div>
+                    <p>Load configuration from INI file or use defaults.</p>
+                    
+                    <div class="code-block">def get(section, option, fallback=None)</div>
+                    <p>Get a configuration value with optional fallback.</p>
+                `
+            },
+            
+            'constants': {
+                title: 'Constants',
+                meta: 'Important constants used throughout MusicBot',
+                content: `
+                    <h3>Version and ID Constants</h3>
+                    <div class="code-block">VERSION = git-derived version string
+DEFAULT_FOOTER_TEXT = "MusicBot v{}".format(VERSION)
+DEFAULT_BOT_NAME = "MusicBot"
+DEFAULT_BOT_ICON = "https://raw.githubusercontent.com/Just-Some-Bots/MusicBot/master/icon.png"</div>
+                    
+                    <h3>File Path Constants</h3>
+                    <div class="code-block">DEFAULT_OPTIONS_FILE = Path("config/options.ini")
+DEFAULT_PERMS_FILE = Path("config/permissions.ini")
+DEFAULT_COMMAND_ALIAS_FILE = Path("config/aliases.ini")
+DEFAULT_DOWNLOADS_DIR = Path("downloads")</div>
+                    
+                    <h3>API and Limit Constants</h3>
+                    <div class="code-block">DISCORD_MSG_CHAR_LIMIT = 2000
+DEFAULT_MAX_INFO_DL_THREADS = 2
+DEFAULT_PRE_DOWNLOAD_DELAY = 0
+VOICE_CLIENT_RECONNECT_TIMEOUT = 5</div>
+                    
+                    <h3>Emoji Constants</h3>
+                    <div class="code-block">EMOJI_CHECK_MARK_BUTTON = "✅"
+EMOJI_CROSS_MARK_BUTTON = "❌"
+EMOJI_PAUSE_BUTTON = "⏸"
+EMOJI_PLAY_BUTTON = "▶"
+EMOJI_SKIP_BUTTON = "⏭"</div>
+                `
+            },
+            
+            'constructs': {
+                title: 'Constructs',
+                meta: 'Core data structures and utility classes',
+                content: `
+                    <h3>GuildAsyncEvent</h3>
+                    <div class="code-block">class GuildAsyncEvent(asyncio.Event):</div>
+                    <p>Extension of asyncio.Event() to provide a boolean flag for activity.</p>
+                    
+                    <div class="code-block">def is_active(self) -> bool
+def activate(self) -> None
+def deactivate(self) -> None</div>
+                    
+                    <h3>GuildSpecificData</h3>
+                    <div class="code-block">class GuildSpecificData:</div>
+                    <p>A typed collection of data specific to each guild/discord server.</p>
+                    
+                    <h3>SkipState</h3>
+                    <div class="code-block">class SkipState:</div>
+                    <p>Manage voters and their ballots for fair MusicBot track skipping.</p>
+                    
+                    <h3>Response</h3>
+                    <div class="code-block">class Response:</div>
+                    <p>Helper class for commands to return Response instead of sending messages directly.</p>
+                    
+                    <h3>Serializable</h3>
+                    <div class="code-block">class Serializable:</div>
+                    <p>Base class for objects that can be serialized to JSON.</p>
+                `
+            },
+            
+            'permissions-classes': {
+                title: 'Permissions Classes',
+                meta: 'User access control system',
+                content: `
+                    <h3>Permissions Class</h3>
+                    <div class="code-block">class Permissions:</div>
+                    <p>Manages user permissions with role-based access control.</p>
+                    
+                    <h3>Permission Groups</h3>
+                    <ul>
+                        <li><strong>owners</strong> - Bot owners with full access</li>
+                        <li><strong>devs</strong> - Developers with elevated access</li>
+                        <li><strong>whitelisted</strong> - Trusted users</li>
+                        <li><strong>blacklisted</strong> - Denied users</li>
+                        <li><strong>everybody</strong> - Default permissions</li>
+                    </ul>
+                    
+                    <h3>Permission Checks</h3>
+                    <div class="code-block">def check(self, message, permission, min_value=1)</div>
+                    <p>Check if user has sufficient permission level.</p>
+                    
+                    <div class="code-block">def has(self, message, permission)</div>
+                    <p>Check if user has a specific permission.</p>
+                `
+            },
+            
+            'utils': {
+                title: 'Utils',
+                meta: 'Helper functions and utilities',
+                content: `
+                    <h3>Formatting Functions</h3>
+                    <div class="code-block">def format_time(seconds)</div>
+                    <p>Format seconds into human-readable time string.</p>
+                    
+                    <div class="code-block">def format_size_from_bytes(bytes_count)</div>
+                    <p>Format byte count into human-readable size.</p>
+                    
+                    <div class="code-block">def safe_print(content, **kwargs)</div>
+                    <p>Print content safely handling Discord character limits.</p>
+                    
+                    <h3>Command Utilities</h3>
+                    <div class="code-block">def owner_only(func)</div>
+                    <p>Decorator to restrict command to bot owner only.</p>
+                    
+                    <div class="code-block">def dev_only(func)</div>
+                    <p>Decorator to restrict command to bot developers.</p>
+                    
+                    <div class="code-block">def permission_check(func)</div>
+                    <p>Decorator to check user permissions before executing command.</p>
+                `
+            },
+            
+            'filecache': {
+                title: 'FileCache',
+                meta: 'Audio file cache management',
+                content: `
+                    <h3>AudioFileCache Class</h3>
+                    <div class="code-block">class AudioFileCache:</div>
+                    <p>Manages the audio file cache and provides cache statistics.</p>
+                    
+                    <h3>Cache Management Methods</h3>
+                    <div class="code-block">def get_if_cached(self, filename, ignore_ext=True) -> str</div>
+                    <p>Check for existing cache file by name, return matched path.</p>
+                    
+                    <div class="code-block">def get_cache_size(self) -> Tuple[int, int]</div>
+                    <p>Returns cache size as (size_bytes, file_count).</p>
+                    
+                    <div class="code-block">def delete_old_audiocache(self, remove_dir=False) -> bool</div>
+                    <p>Handle deletion of cache data according to settings.</p>
+                    
+                    <div class="code-block">def handle_new_cache_entry(self, entry)</div>
+                    <p>Add new entry to cache and enforce cache limits.</p>
+                    
+                    <h3>Cache Path</h3>
+                    <div class="code-block">@property
+def folder(self) -> pathlib.Path</div>
+                    <p>Get configured cache path as pathlib.Path</p>
+                `
+            },
+            
+            'json': {
+                title: 'Json',
+                meta: 'JSON file management wrapper',
+                content: `
+                    <h3>Json Class</h3>
+                    <div class="code-block">class Json:</div>
+                    <p>Managed JSON data with automatic file parsing and data retrieval.</p>
+                    
+                    <h3>Usage</h3>
+                    <div class="code-block">def __init__(self, json_file: pathlib.Path)</div>
+                    <p>Initialize JSON data manager for a specific file.</p>
+                    
+                    <div class="code-block">def parse(self) -> Dict[str, Any]</div>
+                    <p>Parse the file as JSON and return the data.</p>
+                    
+                    <div class="code-block">def get(self, item: str, fallback: Any = None) -> Any</div>
+                    <p>Get an item from the JSON file with optional fallback.</p>
+                    
+                    <h3>Example Usage</h3>
+                    <div class="code-block">json_data = Json(Path("data/config.json"))
+value = json_data.get("setting_name", default_value)</div>
+                `
+            },
+            
+            'downloader': {
+                title: 'Downloader',
+                meta: 'Media downloading functionality using yt-dlp',
+                content: `
+                    <h3>Download Management</h3>
+                    <p>The DownloadManager class orchestrates media downloads using yt-dlp.</p>
+                    
+                    <h3>Key Features</h3>
+                    <ul>
+                        <li>Concurrent download support with thread pools</li>
+                        <li>Download queue management</li>
+                        <li>Progress tracking and status updates</li>
+                        <li>Cache integration</li>
+                    </ul>
+                    
+                    <h3>Common Options</h3>
+                    <div class="code-block">--extractor-args youtube:player_client=android,web
+--no-playlist
+--max-filesize {max_filesize}
+--proxy {proxy_url}</div>
+                `
+            },
+            
+            'ytdlp-oauth2': {
+                title: 'YtdlpOAuth2',
+                meta: 'OAuth2 plugin for YouTube access',
+                content: `
+                    <h3>YouTubeOAuth2Handler</h3>
+                    <div class="code-block">class YouTubeOAuth2Handler(InfoExtractor):</div>
+                    <p>OAuth2 handler for yt-dlp to access age-restricted and private YouTube content.</p>
+                    
+                    <h3>Static Methods</h3>
+                    <div class="code-block">@staticmethod
+def set_client_id(client_id: str) -> None
+
+@staticmethod
+def set_client_secret(client_secret: str) -> None</div>
+                    <p>Set OAuth2 credentials for the handler.</p>
+                    
+                    <h3>Authorization Methods</h3>
+                    <div class="code-block">def initialize_oauth(self) -> TokenDict</div>
+                    <p>Validate existing OAuth2 data or trigger authorization flow.</p>
+                    
+                    <div class="code-block">def authorize(self) -> TokenDict</div>
+                    <p>Start authorization flow and loop until authorized or time-out.</p>
+                    
+                    <div class="code-block">def refresh_token(self, refresh_token: TokenDict) -> TokenDict</div>
+                    <p>Refresh authorization using refresh data or restart auth flow.</p>
+                    
+                    <h3>Enabling OAuth2</h3>
+                    <div class="code-block">def enable_ytdlp_oauth2_plugin(config: "Config") -> None</div>
+                    <p>Controls addition of OAuth2 plugin to yt-dlp based on config settings.</p>
+                `
+            },
+            
+            'spotify-classes': {
+                title: 'Spotify Classes',
+                meta: 'Spotify API integration classes',
+                content: `
+                    <h3>SpotifyObject (Base Class)</h3>
+                    <div class="code-block">class SpotifyObject:</div>
+                    <p>Base class for parsed Spotify response objects.</p>
+                    
+                    <h3>SpotifyTrack</h3>
+                    <div class="code-block">class SpotifyTrack(SpotifyObject):</div>
+                    <p>Track data for an individual track, parsed from Spotify API response data.</p>
+                    
+                    <h3>SpotifyAlbum</h3>
+                    <div class="code-block">class SpotifyAlbum(SpotifyObject):</div>
+                    <p>Album object with all or partial tracks, as parsed from Spotify API response data.</p>
+                    
+                    <h3>SpotifyPlaylist</h3>
+                    <div class="code-block">class SpotifyPlaylist(SpotifyObject):</div>
+                    <p>Playlist object with all or partial tracks, as parsed from Spotify API response data.</p>
+                    
+                    <h3>Spotify Main Class</h3>
+                    <div class="code-block">class Spotify:</div>
+                    <p>Main class for managing Spotify API integration.</p>
+                    
+                    <h3>API Endpoints</h3>
+                    <div class="code-block">WEB_TOKEN_URL = "https://open.spotify.com/get_access_token?reason=transport&productType=web_player"
+OAUTH_TOKEN_URL = "https://accounts.spotify.com/api/token"
+API_BASE = "https://api.spotify.com/v1/"</div>
+                    
+                    <h3>Key Methods</h3>
+                    <div class="code-block">def get_track_object(self, track_id: str) -> SpotifyTrack
+def get_album_object_complete(self, album_id: str) -> SpotifyAlbum
+def get_playlist_object_complete(self, list_id: str) -> SpotifyPlaylist
+def make_api_req(self, endpoint: str) -> Dict[str, Any]
+def has_token(self) -> bool</div>
+                `
+            },
+            
+            'autoplaylist': {
+                title: 'Autoplaylist',
+                meta: 'Automatic playlist generation',
+                content: `
+                    <h3>Autoplaylist Class</h3>
+                    <div class="code-block">class AutoPlaylist:</div>
+                    <p>Manages automatic playlist generation and history tracking.</p>
+                    
+                    <h3>Features</h3>
+                    <ul>
+                        <li>Auto-generated playlist from user preferences</li>
+                        <li>History tracking with configurable retention</li>
+                        <li>Cached song selection for offline playback</li>
+                        <li>Integration with file cache</li>
+                    </ul>
+                    
+                    <h3>Configuration</h3>
+                    <div class="code-block">APL_FILE_DEFAULT = Path("config/autoplaylist.ini")
+APL_FILE_HISTORY = Path("config/history.ini")</div>
+                `
+            },
+            
+            'exceptions': {
+                title: 'Exceptions',
+                meta: 'Custom exception hierarchy',
+                content: `
+                    <h3>MusicbotException</h3>
+                    <div class="code-block">class MusicbotException(Exception):</div>
+                    <p>Base exception for all MusicBot-specific exceptions.</p>
+                    
+                    <h3>CommandError</h3>
+                    <div class="code-block">class CommandError(MusicbotException):</div>
+                    <p>Raised when command processing fails.</p>
+                    
+                    <h3>ExtractionError</h3>
+                    <div class="code-block">class ExtractionError(MusicbotException):</div>
+                    <p>Raised when media extraction fails (YouTube, etc.).</p>
+                    
+                    <h3>HelpfulError</h3>
+                    <div class="code-block">class HelpfulError(MusicbotException):</div>
+                    <p>User friendly exception with problem/solution sections.</p>
+                    
+                    <h3>PermissionsError</h3>
+                    <div class="code-block">class PermissionsError(MusicbotException):</div>
+                    <p>Raised when insufficient permissions for an action.</p>
+                    
+                    <h3>FFmpeg Errors</h3>
+                    <div class="code-block">class FFmpegError(MusicbotException):
+class FFmpegWarning(MusicbotException):</div>
+                    <p>FFmpeg-specific errors and warnings.</p>
+                `
+            },
+            
+            'event-emitter': {
+                title: 'EventEmitter',
+                meta: 'Event system for async callbacks',
+                content: `
+                    <h3>EventEmitter Class</h3>
+                    <div class="code-block">class EventEmitter:</div>
+                    <p>Manage a collection of events and an event loop to run callbacks that are also coroutines.</p>
+                    
+                    <h3>Event Management</h3>
+                    <div class="code-block">def emit(self, event: str, *args: Any, **kwargs: Any) -> None</div>
+                    <p>Trigger all callbacks registered with event to be fired.</p>
+                    
+                    <div class="code-block">def on(self, event: str, callback: EventCallback) -> Any</div>
+                    <p>Schedule a callback to run each time event is emitted.</p>
+                    
+                    <div class="code-block">def off(self, event: str, callback: EventCallback) -> Any</div>
+                    <p>Remove a scheduled callback from the event register.</p>
+                    
+                    <div class="code-block">def once(self, event: str, callback: EventCallback) -> Any</div>
+                    <p>Schedule a callback function to fire only once.</p>
+                    
+                    <h3>Example Usage</h3>
+                    <div class="code-block">event_emitter.on("player_start", on_player_start)
+event_emitter.emit("player_start", track_name="Some Song")</div>
+                `
+            },
+            
+            'aliases': {
+                title: 'Aliases',
+                meta: 'Command aliasing system',
+                content: `
+                    <h3>Aliases Class</h3>
+                    <div class="code-block">class Aliases:</div>
+                    <p>Provides a method of duplicating commands under different names or providing reduction in keystrokes for multi-argument commands.</p>
+                    
+                    <h3>Features</h3>
+                    <ul>
+                        <li>Command aliasing with different names</li>
+                        <li>Keystroke reduction for multi-argument commands</li>
+                        <li>Complex aliases with arguments</li>
+                        <li>JSON file configuration</li>
+                    </ul>
+                    
+                    <h3>Methods</h3>
+                    <div class="code-block">def __init__(self, aliases_file: Path, nat_cmds: List[str])</div>
+                    <p>Handle locating, initializing, loading, and validation of command aliases.</p>
+                    
+                    <div class="code-block">def load(self) -> None</div>
+                    <p>Attempt to load/decode JSON and determine which version of aliases we have.</p>
+                    
+                    <div class="code-block">def get(self, alias_name: str) -> Tuple[str, str]</div>
+                    <p>Get the command name the given alias_name refers to. Returns tuple of (command_name, command_args).</p>
+                    
+                    <h3>AliasesDefault</h3>
+                    <div class="code-block">class AliasesDefault:
+aliases_file: Path = Path(DEFAULT_COMMAND_ALIAS_FILE)
+aliases_seed: RawAliasJSON = {}
+complex_aliases: ComplexAliases = {}</div>
+                `
+            },
+            
+            'opus-loader': {
+                title: 'Opus Loader',
+                meta: 'Opus library loading for audio encoding',
+                content: `
+                    <h3>load_opus_lib Function</h3>
+                    <div class="code-block">def load_opus_lib() -> None:</div>
+                    <p>Take steps needed to load opus library through discord.py for audio encoding.</p>
+                    
+                    <h3>Opus Requirements</h3>
+                    <p>Opus library is required for voice encoding. The function handles:</p>
+                    <ul>
+                        <li>Detecting available Opus library on system</li>
+                        <li>Loading from common library paths</li>
+                        <li>Fallback to discord.py voice defaults</li>
+                        <li>Error reporting if Opus is not available</li>
+                    </ul>
+                    
+                    <h3>When Opus is Needed</h3>
+                    <p>Opus encoding is required for:</p>
+                    <ul>
+                        <li>Voice channel connections</li>
+                        <li>Audio streaming to Discord</li>
+                        <li>Encoding processed audio streams</li>
+                    </ul>
+                `
+            },
+            
+            'main-config': {
+                title: 'Main Config (options.ini)',
+                meta: 'Primary configuration file with bot settings',
+                content: `
+                    <h3>Overview</h3>
+                    <p>The main configuration file <code>config/options.ini</code> controls all bot behavior, from credentials to audio settings. Uses INI format with sections in brackets.</p>
+                    
+                    <h3>Credentials Section</h3>
+                    <ul>
+                        <li><strong>Token</strong> - String - <em>Required</em>
+                            <p>Your Discord bot account token. Required to run the bot.</p>
+                        </li>
+                        <li><strong>Spotify_ClientID</strong> - String - <em>Empty (optional)</em>
+                            <p>Your Spotify developer app Client ID. If empty, the bot uses public credentials.</p>
+                        </li>
+                        <li><strong>Spotify_ClientSecret</strong> - String - <em>Empty (optional)</em>
+                            <p>Your Spotify developer app Client Secret. If empty, the bot uses public credentials.</p>
+                        </li>
+                        <li><strong>YtdlpOAuth2ClientID</strong> - String - <em>Empty (optional)</em>
+                            <p>Sets the YouTube API Client ID for Yt-dlp OAuth2 plugin. Optional unless built-in credentials don't work.</p>
+                        </li>
+                        <li><strong>YtdlpOAuth2ClientSecret</strong> - String - <em>Empty (optional)</em>
+                            <p>Sets the YouTube API Client Secret key for Yt-dlp OAuth2 plugin. Optional unless YtdlpOAuth2ClientID is set.</p>
+                        </li>
+                    </ul>
+                    
+                    <h3>Chat Section</h3>
+                    <ul>
+                        <li><strong>CommandPrefix</strong> - String - <code>!</code>
+                            <p>Determines the prefix that must be used before commands in Discord chat. E.g., if set to *, the play command would be triggered using *play.</p>
+                        </li>
+                        <li><strong>CommandsByMention</strong> - Boolean - <code>yes</code>
+                            <p>Enable using commands with @BotName. The CommandPrefix is still available but can be replaced with @ mention.</p>
+                        </li>
+                        <li><strong>BindToChannels</strong> - List - <em>Empty (optional)</em>
+                            <p>Restricts the bot to only listening to certain text channels. Space-separated list of text channel IDs.</p>
+                        </li>
+                        <li><strong>AllowUnboundServers</strong> - Boolean - <code>no</code>
+                            <p>Setting this to "yes" allows the MusicBot to work in any channel on servers without a "bound" channel set.</p>
+                        </li>
+                        <li><strong>AutojoinChannels</strong> - List - <em>Empty (optional)</em>
+                            <p>Allows the bot to automatically join voice channels on startup. Space-separated list of voice channel IDs.</p>
+                        </li>
+                        <li><strong>DMNowPlaying</strong> - Boolean - <code>no</code>
+                            <p>If "yes", the bot sends a DM to the user who requested a song when their song begins to play, rather than posting in the text channel.</p>
+                        </li>
+                        <li><strong>DisableNowPlayingAutomatic</strong> - Boolean - <code>no</code>
+                            <p>Disable now playing messages for entries automatically added by the bot via the autoplaylist.</p>
+                        </li>
+                        <li><strong>NowPlayingChannels</strong> - List - <em>Empty (optional)</em>
+                            <p>Force the bot to send "now playing" messages in specific text channels. If empty, messages are sent in the channel where the song was requested.</p>
+                        </li>
+                        <li><strong>DeleteNowPlaying</strong> - Boolean - <code>no</code>
+                            <p>If "yes", deletes the "now playing" messages after a small period of time.</p>
+                        </li>
+                    </ul>
+                    
+                    <h3>MusicBot Section</h3>
+                    <ul>
+                        <li><strong>DefaultVolume</strong> - Float - <code>0.25</code>
+                            <p>The volume of the bot's audio output, between 0.01 and 1.0.</p>
+                        </li>
+                        <li><strong>DefaultSpeed</strong> - Float - <code>1.0</code>
+                            <p>The playback speed used by default for every song. Must be between 0.5 and 100.0. Default is 1.0 for normal playback speed.</p>
+                        </li>
+                        <li><strong>SkipsRequired</strong> - Integer - <code>4</code>
+                            <p>The number of people voting to skip in order for a song to be skipped successfully. The actual value used is the minimum of this and the SkipRatio calculation.</p>
+                        </li>
+                        <li><strong>SkipRatio</strong> - Float - <code>0.5</code>
+                            <p>The ratio of votes required (percentage of un-deafened, non-owner users in the channel). Which value is lower (SkipsRequired or SkipRatio) will be used.</p>
+                        </li>
+                        <li><strong>SaveVideos</strong> - Boolean - <code>yes</code>
+                            <p>Determines if downloaded videos will be saved to the audio_cache folder permanently. If "yes", videos will not be re-downloaded if queued again, at the cost of hard-drive space.</p>
+                        </li>
+                        <li><strong>StorageRetainAutoPlay</strong> - Boolean - <code>yes</code>
+                            <p>Never purge videos from cache if they are listed in the auto playlist file. Only applies while SaveVideos option is enabled.</p>
+                        </li>
+                        <li><strong>StorageLimitDays</strong> - Integer - <code>0</code>
+                            <p>Set a time limit for stored files. Set to 0 to disable. Files which aren't used for this period of time will be removed. On Linux/Mac, this uses last-access time. On Windows, file-creation time is used. Only applies when SaveVideos option is enabled.</p>
+                        </li>
+                        <li><strong>StorageLimitBytes</strong> - Integer - <code>0</code>
+                            <p>Set a size limit for the entire cache. Set to 0 to disable. Accepts exact number of bytes or shorthand notation like "20 MB". When storage exceeds this size, files with older access/creation times are removed first. Only applies when SaveVideos option is enabled.</p>
+                        </li>
+                        <li><strong>NowPlayingMentions</strong> - Boolean - <code>no</code>
+                            <p>Mentions the user who queued a song when it starts to play.</p>
+                        </li>
+                        <li><strong>AutoSummon</strong> - Boolean - <code>yes</code>
+                            <p>Automatically joins the owner's voice channel on startup, if possible. The bot must be on the same server and have permission to join the channel.</p>
+                        </li>
+                        <li><strong>UseAutoPlaylist</strong> - Boolean - <code>yes</code>
+                            <p>Start playing songs from the autoplaylist.txt file after joining a channel. This does not stop users from queueing songs.</p>
+                        </li>
+                        <li><strong>AutoPlaylistRandom</strong> - Boolean - <code>yes</code>
+                            <p>Sets if the autoplaylist should play through songs in a random order when enabled. If "no", songs will be played in sequential order.</p>
+                        </li>
+                        <li><strong>AutoPlaylistAutoSkip</strong> - Boolean - <code>yes</code>
+                            <p>Enable automatic skip of auto-playlist songs when a user plays a new song. This only applies to the current playing song if it was added by the auto-playlist.</p>
+                        </li>
+                        <li><strong>AutoPlaylistRemoveBlocked</strong> - Boolean - <code>yes</code>
+                            <p>Remove songs from the auto-playlist if they are found in the song blocklist.</p>
+                        </li>
+                        <li><strong>AutoPause</strong> - Boolean - <code>yes</code>
+                            <p>Pause the music when nobody is in a voice channel, until someone joins again.</p>
+                        </li>
+                        <li><strong>DeleteMessages</strong> - Boolean - <code>no</code>
+                            <p>Automatically cleanup the bot's messages after a small period of time.</p>
+                        </li>
+                        <li><strong>DeleteInvoking</strong> - Boolean - <code>no</code>
+                            <p>If this and DeleteMessages is enabled, the bot will also try to delete messages from other users that called commands. The bot requires the 'Manage Messages' permission for this.</p>
+                        </li>
+                        <li><strong>PersistentQueue</strong> - Boolean - <code>yes</code>
+                            <p>Regularly saves the queue to the disk. If the bot is then shut down, the queue will resume from where it left off.</p>
+                        </li>
+                        <li><strong>PreDownloadNextSong</strong> - Boolean - <code>yes</code>
+                            <p>Enable MusicBot to download the next song in the queue while a song is playing. Currently this option does not apply to auto-playlist or songs added to an empty queue.</p>
+                        </li>
+                        <li><strong>DebugLevel</strong> - String - <code>INFO</code>
+                            <p>Determines what messages are logged to the console. Default level is INFO (what average users need). Other levels include CRITICAL, ERROR, WARNING, DEBUG, VOICEDEBUG, FFMPEG, NOISY, and EVERYTHING. Only change this if debugging or wanting quieter console output.</p>
+                        </li>
+                        <li><strong>StatusMessage</strong> - String - <em>Empty (optional)</em>
+                            <p>Specify a custom message to use as the bot's status. If left empty, the bot will display dynamic info about music currently being played in its status instead. May use variables: {n_playing}, {n_paused}, {n_connected}, {p0_length}, {p0_title}, {p0_url}.</p>
+                        </li>
+                        <li><strong>StatusIncludePaused</strong> - Boolean - <code>no</code>
+                            <p>If enabled, status message updates will count and report paused players.</p>
+                        </li>
+                        <li><strong>WriteCurrentSong</strong> - Boolean - <code>no</code>
+                            <p>Write what the bot is currently playing to the data/&lt;server id&gt;/current.txt FILE. This can be used with OBS and anything else that takes dynamic input.</p>
+                        </li>
+                        <li><strong>AllowAuthorSkip</strong> - Boolean - <code>yes</code>
+                            <p>Allows the person who queued a song to skip their OWN songs instantly, similar to the functionality that owners have where they can skip every song instantly.</p>
+                        </li>
+                        <li><strong>UseExperimentalEqualization</strong> - Boolean - <code>no</code>
+                            <p>Enables experimental equalization code. This will cause all songs to sound similar in volume at the cost of higher processing consumption when the song is initially being played.</p>
+                        </li>
+                        <li><strong>UseEmbeds</strong> - Boolean - <code>yes</code>
+                            <p>Enables the use of embeds throughout the bot. These are messages that are formatted to look cleaner, however they don't appear to users who have link previews disabled in their Discord settings.</p>
+                        </li>
+                        <li><strong>QueueLength</strong> - Integer - <code>10</code>
+                            <p>The amount of items to show when using the queue command.</p>
+                        </li>
+                        <li><strong>RemoveFromAPOnError</strong> - Boolean - <code>yes</code>
+                            <p>Remove songs from the autoplaylist if an error occurred while trying to play them. If enabled, unplayable songs will be moved to another file and out of the autoplaylist. You may want to disable this if you have internet issues or frequent issues playing songs.</p>
+                        </li>
+                        <li><strong>ShowConfigOnLaunch</strong> - Boolean - <code>no</code>
+                            <p>Whether to show the configuration for the bot in the console when it launches.</p>
+                        </li>
+                        <li><strong>LegacySkip</strong> - Boolean - <code>no</code>
+                            <p>Whether to use legacy skip behaviour. This will change it so that those with permission do not need to use "skip f" to force-skip a song, they will instead force-skip by default.</p>
+                        </li>
+                        <li><strong>LeaveServersWithoutOwner</strong> - Boolean - <code>no</code>
+                            <p>Leave servers if the owner is not found in them.</p>
+                        </li>
+                        <li><strong>UseAlias</strong> - Boolean - <code>yes</code>
+                            <p>Use command aliases defined in aliases.json.</p>
+                        </li>
+                        <li><strong>SearchList</strong> - Boolean - <code>no</code>
+                            <p>Use an alternate way to display the results from search command.</p>
+                        </li>
+                        <li><strong>DefaultSearchResults</strong> - Integer - <code>3</code>
+                            <p>Set the amount of search results returned by default.</p>
+                        </li>
+                        <li><strong>EnablePrefixPerGuild</strong> - Boolean - <code>no</code>
+                            <p>Allow per-guild command prefix override via 'setprefix' command.</p>
+                        </li>
+                        <li><strong>CustomEmbedFooter</strong> - String - <em>Empty (optional)</em>
+                            <p>Specify a custom message to use as the bot's embed footer.</p>
+                        </li>
+                        <li><strong>SelfDeafen</strong> - Boolean - <code>yes</code>
+                            <p>Sets if you'd like the bot to deafen when joining a voice channel.</p>
+                        </li>
+                        <li><strong>LeaveInactiveVC</strong> - Boolean - <code>no</code>
+                            <p>Sets if the bot should leave a voice channel when it becomes empty.</p>
+                        </li>
+                        <li><strong>LeaveInactiveVCTimeOut</strong> - Duration - <code>300</code>
+                            <p>Sets how long the bot should wait before leaving a voice channel that is inactive. Only applies if LeaveInactiveVC is enabled. Time can be set in seconds or as a duration phrase (day, hour, minute, second). Default value is 300 seconds.</p>
+                        </li>
+                        <li><strong>LeaveAfterQueueEmpty</strong> - Boolean - <code>no</code>
+                            <p>Sets if the bot should leave immediately once all songs have finished playing.</p>
+                        </li>
+                        <li><strong>LeavePlayerInactiveFor</strong> - Duration - <code>0</code>
+                            <p>Set a period of seconds that a player can be paused or not playing before it will disconnect. This setting is independent of LeaveAfterQueueEmpty. Time can be set in seconds or using duration format. Set to 0 to disable. Default value is 0.</p>
+                        </li>
+                        <li><strong>RoundRobinQueue</strong> - Boolean - <code>no</code>
+                            <p>When enabled the bot will automatically rotate between user requested songs.</p>
+                        </li>
+                        <li><strong>EnableUserBlocklist</strong> - Boolean - <code>yes</code>
+                            <p>This setting allows you to quickly enable or disable use of User Blocklist.</p>
+                        </li>
+                        <li><strong>EnableSongBlocklist</strong> - Boolean - <code>no</code>
+                            <p>This setting allows you to quickly enable or disable the use of Song Blocklist.</p>
+                        </li>
+                        <li><strong>EnableNetworkChecker</strong> - Boolean - <code>no</code>
+                            <p>Allow MusicBot to use system ping command to detect network outage and availability. This is useful if you keep the bot joined to a channel or playing music 24/7. MusicBot must be restarted to enable network testing. By default this is disabled.</p>
+                        </li>
+                        <li><strong>SavePlayedHistoryGlobal</strong> - Boolean - <code>no</code>
+                            <p>Enable saving all songs played by MusicBot to a global playlist, history.txt.</p>
+                        </li>
+                        <li><strong>SavePlayedHistoryGuilds</strong> - Boolean - <code>no</code>
+                            <p>Enable saving songs played by MusicBot to a per-guild playlist, history-{Guild_ID}.txt.</p>
+                        </li>
+                        <li><strong>EnableLocalMedia</strong> - Boolean - <code>no</code>
+                            <p>Enable playback of local media files using the play command. When enabled, users can use: <code>play file://path/to/file.ext</code> to play files from the local MediaFileDirectory path.</p>
+                        </li>
+                        <li><strong>UnpausePlayerOnPlay</strong> - Boolean - <code>no</code>
+                            <p>Allow MusicBot to automatically unpause when play commands are used.</p>
+                        </li>
+                        <li><strong>YtdlpProxy</strong> - String - <em>Empty (optional)</em>
+                            <p>Experimental, HTTP/HTTPS proxy settings to use with ytdlp media downloader. The value set here is passed to <code>ytdlp --proxy</code> and aiohttp header checking. Leave blank to disable.</p>
+                        </li>
+                        <li><strong>YtdlpUserAgent</strong> - String - <em>Empty (optional)</em>
+                            <p>Experimental option to set a static User-Agent header in yt-dlp. It is not typically recommended by yt-dlp to change the UA string. For examples of what you might put here, check the following two links: [MDN user-agent](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent) and [useragents.me](https://www.useragents.me/). Leave blank to use default, dynamically generated UA strings.</p>
+                        </li>
+                        <li><strong>YtdlpUseOAuth2</strong> - Boolean - <code>no</code>
+                            <p>Experimental option to enable yt-dlp to use a YouTube account via OAuth2. When enabled, you must use the generated URL and code to authorize an account. The authorization token is then stored in the <code>data/auth.token</code> file. This option should not be used when cookies are enabled. Using a personal account may not be recommended.</p>
+                        </li>
+                        <li><strong>YtdlpOAuth2URL</strong> - String - <em>Empty (optional)</em>
+                            <p>Optional youtube URL used at start-up for triggering OAuth2 authorization. This starts the OAuth2 prompt early, rather than waiting for a song request. Authorization must be completed before start-up will continue when this is set.</p>
+                        </li>
+                    </ul>
+                    
+                    <h3>Files Section</h3>
+                    <ul>
+                        <li><strong>LogsMaxKept</strong> - Integer - <code>0</code>
+                            <p>Configure automatic log file rotation at restart, and limit the number of files kept. When disabled, only one log is kept and its contents are replaced each run. Default is 0, or disabled. Maximum allowed number is 100.</p>
+                        </li>
+                        <li><strong>LogsDateFormat</strong> - String - <code>.ended-%Y-%j-%H%m%S</code>
+                            <p>Configure the log file date format used when LogsMaxKept is enabled. If left blank, a warning is logged and the default will be used instead. Learn more about time format codes from the tables and data here: [Python datetime docs](https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior). Default value is: ".ended-%Y-%j-%H%m%S"</p>
+                        </li>
+                        <li><strong>i18nFile</strong> - String - <em>Empty (optional)</em>
+                            <p>Path to your i18n file. Do not set this if you do not know what it does.</p>
+                        </li>
+                        <li><strong>AudioCachePath</strong> - String - <em>Empty (optional)</em>
+                            <p>A folder path where you want to store downloaded media files. It can be left empty. This directory will be created if it does not exist. Default folder is named "audio_cache" in the current working directory. This directory is used for temporary storage even if SaveVideos is disabled.</p>
+                        </li>
+                        <li><strong>UserBlocklistFile</strong> - String - <em>Empty (optional)</em>
+                            <p>A file path where you can add discord User ID numbers and prevent those users from using any bot commands. Leave this blank to use the default file location. MusicBot will create it if it does not exist. Default file: config/blocklist_users.txt</p>
+                        </li>
+                        <li><strong>SongBlocklistFile</strong> - String - <em>Empty (optional)</em>
+                            <p>A file path where you can add URLs, video IDs, or other words and phrases to prevent users from playing track if their URL or song title contains any matched line from this block list file. Leave this blank to use the default file location. MusicBot will create it if it does not exist. Default file: config/blocklist_songs.txt</p>
+                        </li>
+                        <li><strong>AutoPlaylistDirectory</strong> - String - <em>Empty (optional)</em>
+                            <p>A directory path where playlists and related files can be stored. Default path is: config/playlists/</p>
+                        </li>
+                        <li><strong>MediaFileDirectory</strong> - String - <em>Empty (optional)</em>
+                            <p>An optional directory path where playable media files can be stored. All files and sub-directories can then be accessed by using 'file://' as a protocol. Example: file://some/folder/name/file.ext maps to ./media/some/folder/name/file.ext</p>
+                        </li>
+                    </ul>
+                `
+            },
+            
+            'permissions-config': {
+                title: 'Permissions (permissions.ini)',
+                meta: 'User access control and command permissions',
+                content: `
+                    <h3>Overview</h3>
+                    <p>The <code>config/permissions.ini</code> file controls user permissions and access to commands. Uses INI format with semicolon comment characters. Sections represent permission groups.</p>
+                    
+                    <h3>Basic Structure</h3>
+                    <ul>
+                        <li><strong>Semicolons</strong> - Comment characters. Any line starting with one is ignored.</li>
+                        <li><strong>Section Headers</strong> - Permission groups in [Brackets]. You can add more for more permission groups.</li>
+                        <li><strong>Options with semicolons</strong> - Will be ignored (commented out).</li>
+                        <li><strong>No empty options</strong> - Never have an option without a value (e.g., "CommandBlacklist = ").</li>
+                        <li><strong>[Default] section</strong> - Special section. Any user not assigned to a group via role or UserList gets assigned to this group.</li>
+                        <li><strong>[Owner (auto)] section</strong> - Section that bot owner gets assigned to automatically. Cannot assign users or roles to this group.</li>
+                    </ul>
+                    
+                    <h3>Permission Options</h3>
+                    <ul>
+                        <li><strong>CommandWhitelist</strong> - List - <em>Optional</em>
+                            <p>List of commands users are allowed to use, separated by spaces. Don't include the prefix (e.g., !). Overrides CommandBlacklist if set.</p>
+                        </li>
+                        <li><strong>CommandBlacklist</strong> - List - <em>Optional</em>
+                            <p>List of commands users are not allowed to use. You don't need to use both whitelist and blacklist since blacklist gets overridden. Just pick one.</p>
+                        </li>
+                        <li><strong>IgnoreNonVoice</strong> - List - <em>Optional</em>
+                            <p>List of commands that require the user to be in the same voice channel as the bot to use. For example, if you don't want the user to be able to voteskip songs while not in the voice channel, add skip to this option.</p>
+                        </li>
+                        <li><strong>GrantToRoles</strong> - List - <em>Optional</em>
+                            <p>List of role IDs to automatically grant this group to. To get the ID of a role, use the listids command.</p>
+                        </li>
+                        <li><strong>UserList</strong> - List - <em>Optional</em>
+                            <p>List of user IDs to grant this group to. This option overrides the role granted by the GrantToRoles option.</p>
+                        </li>
+                        <li><strong>MaxSongLength</strong> - Integer - <em>Optional (default 0 = unlimited)</em>
+                            <p>Maximum length of a song in seconds. Note: This won't always work if the song data doesn't have duration listed. This doesn't happen often, but YouTube, SoundCloud, etc. work fine. This will be fixed in a future update. A value of 0 means unlimited.</p>
+                        </li>
+                        <li><strong>MaxSongs</strong> - Integer - <em>Optional (default 0 = unlimited)</em>
+                            <p>Maximum number of songs a user is allowed to queue. A value of 0 means unlimited.</p>
+                        </li>
+                        <li><strong>MaxPlaylistLength</strong> - Integer - <em>Optional (default 0 = unlimited)</em>
+                            <p>Maximum number of songs a playlist is allowed to have to be queued. A value of 0 means unlimited.</p>
+                        </li>
+                        <li><strong>MaxSearchItems</strong> - Integer - <em>Optional (default varies)</em>
+                            <p>The maximum number of items that can be returned in a search.</p>
+                        </li>
+                        <li><strong>AllowPlaylists</strong> - Boolean - <em>Optional (default yes)</em>
+                            <p>Whether or not the user is allowed to queue entire playlists.</p>
+                        </li>
+                        <li><strong>InstaSkip</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Allows the user to skip a song without having to vote, like the owner.</p>
+                        </li>
+                        <li><strong>SkipLooped</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Allows the user to skip a looped song.</p>
+                        </li>
+                        <li><strong>Remove</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Allows the user to remove any song from the queue at any point.</p>
+                        </li>
+                        <li><strong>SkipWhenAbsent</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Tells the bot to automatically skip songs queued by people in this group who have left the voice channel after queueing. Will only skip once the song is about to play.</p>
+                        </li>
+                        <li><strong>BypassKaraokeMode</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Allows the user to queue songs even when karaoke mode is activated.</p>
+                        </li>
+                        <li><strong>SummonNoVoice</strong> - Boolean - <em>Optional (default no)</em>
+                            <p>Allows the user to automatically summon the bot when using the play or stream command if there is no voice channel that the bot is already joined in the server. It is also expected that the user has ability to invoke summon command to use this option.</p>
+                        </li>
+                        <li><strong>Extractors</strong> - List - <em>Optional (default hardcoded list)</em>
+                            <p>Specify yt-dlp extractor names that MusicBot will allow users to play media from. Each extractor name should be separated by spaces or commas. If left empty, hard-coded defaults will be allowed.</p>
+                            <p>The yt-dlp project has a list of supported services / extractor names here: https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md</p>
+                            <p>The extractor <code>spotify:musicbot</code> is provided by MusicBot, not by yt-dlp.</p>
+                            <p>To allow ALL services, including porn services, add "__" to the list, without quotes.</p>
+                        </li>
+                    </ul>
+                    
+                    <h3>Example Groups</h3>
+                    <ul>
+                        <li><strong>[Owner (auto)]</strong> - Owner group with full permissions. Don't remove. Options not specified fall back to permissive defaults.</li>
+                        <li><strong>[Default]</strong> - Fallback group for any users not assigned to another group. Commands allowed: play, perms, queue, np, skip, search, id, help, clean. Has MaxSongLength=1200, MaxSearchItems=10, AllowPlaylists=yes. Extractors: generic, youtube, spotify:musicbot, Bandcamp, soundcloud.</li>
+                        <li><strong>[MusicMaster]</strong> - Full permissions group. No limits on song length, songs, playlists. MaxSearchItems=20, InstaSkip=yes, Remove=yes, BypassKaraokeMode=yes, SummonNoVoice=yes, SkipLooped=yes. All extractors allowed.</li>
+                        <li><strong>[DJ]</strong> - DJ permission group. Cannot use blacklist/listids commands. No limits on song lengths, songs, playlists. MaxSearchItems=20, InstaSkip=yes, Remove=yes, BypassKaraokeMode=yes, SummonNoVoice=yes, SkipLooped=yes. Extractors: generic, youtube, youtube:tab, youtube:search, youtube:playlist, soundcloud, soundcloud:set, spotify:musicbot, Bandcamp, Bandcamp:album.</li>
+                        <li><strong>[Limited]</strong> - Restricted group. Can only use: play, queue, np, perms, help, skip. Must be in voice channel to use play/skip. MaxSongLength=210 seconds, MaxSongs=8, MaxSearchItems=10. Extractors: generic, youtube, youtube:playlist, youtube:tab.</li>
+                    </ul>
+                `
+            },
+            
+            'command-aliases': {
+                title: 'Command Aliases (aliases.json)',
+                meta: 'Renaming commands and creating command macros',
+                content: `
+                    <h3>Overview</h3>
+                    <p>The <code>config/aliases.json</code> file allows you to rename or create shortcuts for existing commands. Command aliases provide renamed command names or keystroke reduction for multi-argument commands.</p>
+                    
+                    <h3>Format</h3>
+                    <p>JSON format with the following structure:</p>
+                    <div class="code-block">{
+    "original_command_name": ["alias1", "alias2", "alias3"],
+    "command_with_args": ["macro_alias"]
+}</p>
+                    
+                    <h3>Rules</h3>
+                    <ul>
+                        <li>Alias names may contain anything, except for spaces</li>
+                        <li>The keys must be valid commands (the original command names)</li>
+                        <li>Command aliases with arguments can have simple, space-separated arguments</li>
+                        <li>Arguments passed by the user will be appended to any command arguments set in the alias</li>
+                    </ul>
+                    
+                    <h3>Examples</h3>
+                    <div class="code-block">{
+    "play": ["p"],
+    "skip": ["s"],
+    "queue": ["q"],
+    "latency": ["ping"],
+    "summon": ["join", "connect", "come"],
+    "disconnect": ["leave", "stop"]
+}</div>
+                    
+                    <h3>Command Macros</h3>
+                    <p>To alias a command with arguments, use the format:</p>
+                    <div class="code-block">{
+    "command_name arg1 arg2 argN": ["macro_alias"]
+}</div>
+                    
+                    <h3>Configuration Example</h3>
+                    <div class="code-block">{
+    "config set MusicBot": ["setcfg"]
+}</div>
+                    <p>Users can use <code>setcfg DefaultVolume 0.40</code> to set default playback volume to 40%.</p>
+                    
+                    <h3>Structure</h3>
+                    <ul>
+                        <li><strong>Top-level comment</strong> - First element is a comment array explaining aliases usage</li>
+                        <li><strong>Command mappings</strong> - Each command name maps to an array of aliases</li>
+                        <li><strong>Macro aliases</strong> - Commands with arguments map to single-word aliases</li>
+                    </ul>
+                `
+            },
+            
+            'autoplaylist-config': {
+                title: 'Autoplaylist (autoplaylist.txt)',
+                meta: 'Automatic song queue configuration',
+                content: `
+                    <h3>Overview</h3>
+                    <p>The <code>config/autoplaylist.txt</code> file (or custom path via <code>AutoPlaylistDirectory</code>) contains automatically playing songs. Each line should be a valid URL (typically YouTube or other supported services).</p>
+                    
+                    <h3>Format</h3>
+                    <p>Plain text file with one media URL per line:</p>
+                    <div class="code-block"># Comment lines start with #
+https://youtube.com/watch?v=abc123
+https://youtube.com/watch?v=xyz456
+https://soundcloud.com/artist/song</div>
+                    
+                    <h3>Supported Sources</h3>
+                    <p>The autoplaylist supports any media source that MusicBot can play, including:</p>
+                    <ul>
+                        <li>YouTube videos (youtube.com/watch?v=)</li>
+                        <li>SoundCloud tracks</li>
+                        <li>Spotify tracks (if enabled)</li>
+                        <li>Bandcamp tracks</li>
+                        <li>Other supported URLs via yt-dlp</li>
+                    </ul>
+                    
+                    <h3>Integration with Options</h3>
+                    <p>Autoplaylist behavior is controlled by settings in <code>options.ini</code>:</p>
+                    <ul>
+                        <li><strong>UseAutoPlaylist</strong> - Enable/disable autoplaylist</li>
+                        <li><strong>AutoPlaylistRandom</strong> - Play in random order or sequential</li>
+                        <li><strong>AutoPlaylistAutoSkip</strong> - Skip auto-playlist songs when new song queued</li>
+                        <li><strong>AutoPlaylistRemoveBlocked</strong> - Remove blocked songs from autoplaylist</li>
+                    </ul>
+                    
+                    <h3>Management Commands</h3>
+                    <p>Commands to manage autoplaylist entries:</p>
+                    <ul>
+                        <li><code>save</code> - Add current song to autoplaylist</li>
+                        <li><code>unsave</code> - Remove current song from autoplaylist</li>
+                        <li><code>autoplaylist</code> - Manage autoplaylist entries</li>
+                    </ul>
+                    
+                    <h3>Blocklist Integration</h3>
+                    <p>Songs in the song blocklist (<code>blocklist_songs.txt</code>) are automatically removed from the autoplaylist if <code>AutoPlaylistRemoveBlocked</code> is enabled in options.ini.</p>
+                `
+            },
+            
+            'i18n-config': {
+                title: 'Internationalization (i18n)',
+                meta: 'Language translation system',
+                content: `
+                    <h3>Overview</h3>
+                    <p>The MusicBot uses a JSON-based internationalization system located in the <code>config/i18n/</code> directory. Each language has its own JSON file with key-value pairs for translated text.</p>
+                    
+                    <h3>File Structure</h3>
+                    <div class="code-block">config/i18n/
+    en.json    # English (default)
+    es.json    # Spanish
+    fr.json    # French
+    de.json    # German
+    # ... more languages</div>
+                    
+                    <h3>Format</h3>
+                    <p>JSON key-value pairs where keys are internal identifiers and values are translated text:</p>
+                    <div class="code-block">{
+    "cmd-resetplaylist-response": "The server's autoplaylist has been reset.",
+    "cmd-help-invalid": "No such command",
+    "cmd-help-response": "For information about a particular command, run {example_cmd}",
+    "cmd-play-limit": "You have reached your enqueued song limit ({0})"
+}</div>
+                    
+                    <h3>Placeholder Variables</h3>
+                    <p>Translation strings can contain placeholders that are filled at runtime:</p>
+                    <ul>
+                        <li><strong>{0}, {1}, {2}...</strong> - Positional arguments (e.g., user names, URLs, numbers)</li>
+                        <li><strong>{example_cmd}</strong> - Command prefix example</li>
+                        <li><strong>{n}</strong> - Dynamic values like song counts, user IDs, etc.</li>
+                    </ul>
+                    
+                    <h3>Supported Keys</h3>
+                    <p>Key naming convention: <code>cmd-category-action</code></p>
+                    <ul>
+                        <li><strong>cmd-resetplaylist-response</strong> - Autoplaylist reset confirmation</li>
+                        <li><strong>cmd-help-invalid</strong> - Invalid command response</li>
+                        <li><strong>cmd-help-response</strong> - Help command output</li>
+                        <li><strong>cmd-play-*</strong> - All play command responses</li>
+                        <li><strong>cmd-search-*</strong> - Search command results and messages</li>
+                        <li><strong>cmd-np-*</strong> - Now playing messages</li>
+                        <li><strong>cmd-volume-*</strong> - Volume change messages</li>
+                        <li><strong>cmd-queue-*</strong> - Queue display messages</li>
+                        <li><strong>cmd-skip-*</strong> - Skip command responses</li>
+                        <li><strong>on_player_play-*</strong> - Player event messages</li>
+                        <li><strong>playlists-*</strong> - Playlist-related messages</li>
+                    </ul>
+                    
+                    <h3>Configuration</h3>
+                    <p>In <code>config/options.ini</code>, set the i18n file path:</p>
+                    <div class="code-block">[Files]
+i18nFile = </div>
+                    <p>Leave blank to use the default language (en.json) or set to a specific file name.</p>
+                    
+                    <h3>Creating New Languages</h3>
+                    <ol>
+                        <li>Copy an existing language JSON file (e.g., <code>en.json</code>)</li>
+                        <li>Rename it to your language code (e.g., <code>es.json</code> for Spanish)</li>
+                        <li>Translate all values while keeping keys intact</li>
+                        <li>Set <code>i18nFile</code> in options.ini to your language file</li>
+                        <li>Restart the bot to apply changes</li>
+                    </ol>
+                    
+                    <h3>Example from en.json</h3>
+                    <div class="code-block">{
+    "cmd-save-success": "Added &lt;{0}&gt; to the autoplaylist.",
+    "cmd-save-success-multiple": "Added {0} songs to the autoplaylist.",
+    "cmd-play-playlist-reply": "Enqueued **%s** songs to be played. Position in queue: %s",
+    "cmd-play-limit": "You have reached your enqueued song limit ({0})",
+    "cmd-np-reply-author": "Now {action}: **{title}** added by **{author}**\\nProgress: {progress_bar} {progress}\\n:point_right: &lt;{url}&gt;",
+    "on_player_play-onChannel_authorNotInChannel_skipWhenAbsent": "Skipping next song in {channel}: {title} added by {author} as queuer not in voice!"
+}</div>
+                `
+            },
+            
+            'blocklists': {
+                title: 'Blocklists (blocklist_users.txt, blocklist_songs.txt)',
+                meta: 'User and song blocking functionality',
+                content: `
+                    <h3>Overview</h3>
+                    <p>MusicBot supports blocking specific users and songs via text files in the <code>config/</code> directory. These blocklists prevent blocked items from using commands or being played.</p>
+                    
+                    <h3>User Blocklist</h3>
+                    <p>File: <code>config/blocklist_users.txt</code> (default, custom path via <code>UserBlocklistFile</code> in options.ini)</p>
+                    <p>Format: One Discord User ID per line:</p>
+                    <div class="code-block"># Blocklist users by ID (one per line)
+21343341324
+321432413214321</div>
+                    <p>Users in this file cannot use any bot commands. The User Blocklist must be enabled via <code>EnableUserBlocklist</code> in options.ini (default: yes).</p>
+                    
+                    <h3>Song Blocklist</h3>
+                    <p>File: <code>config/blocklist_songs.txt</code> (default, custom path via <code>SongBlocklistFile</code> in options.ini)</p>
+                    <p>Format: One URL, video ID, or keyword per line:</p>
+                    <div class="code-block"># Blocklist songs by URL, ID, or keyword
+https://youtube.com/watch?v=badVideo123
+badkeyword
+anotherblockedvideo</div>
+                    <p>When a song is queued, its URL and title are checked against this list. If any line from the blocklist is found in the song's URL or title, it will be blocked. The Song Blocklist must be enabled via <code>EnableSongBlocklist</code> in options.ini (default: no).</p>
+                    
+                    <h3>Integration with Autoplaylist</h3>
+                    <p>If <code>AutoPlaylistRemoveBlocked</code> is enabled in options.ini (default: yes), songs from the autoplaylist that appear in the song blocklist will be automatically removed from autoplaylist.</p>
+                    
+                    <h3>Blocklist Management</h3>
+                    <p>Use the blacklist command to manage blocklists:</p>
+                    <div class="code-block"># Add users to blocklist
+blacklist + @user1 @user2
+
+# Remove users from blocklist  
+blacklist - @user3
+
+# Check current blocklist
+blacklist</div>
+                `
+            }
+        };
+
+        // Document content display
+        document.querySelectorAll('.doc-item').forEach(item => {
+            item.addEventListener('click', () => {
+                // Remove active class from all items
+                document.querySelectorAll('.doc-item').forEach(i => i.classList.remove('active'));
+                
+                // Add active class to clicked item
+                item.classList.add('active');
+                
+                // Get content and update display
+                const target = item.dataset.target;
+                if (docs[target]) {
+                    document.getElementById('title').textContent = docs[target].title;
+                    document.getElementById('meta').textContent = docs[target].meta;
+                    document.getElementById('content').innerHTML = docs[target].content;
+                }
+            });
+        });
+
+        // Search functionality
+        document.querySelector('.search-box').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const items = document.querySelectorAll('.doc-item');
+            
+            items.forEach(item => {
+                const target = item.dataset.target;
+                if (docs[target]) {
+                    const content = docs[target].title.toLowerCase() + ' ' + docs[target].meta.toLowerCase() + ' ' + docs[target].content.toLowerCase();
+                    item.style.display = content.includes(query) ? 'block' : 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

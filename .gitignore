@@ -30,3 +30,5 @@ config/autoplaylist.cachemap.json
 AGENTS.md
 agents_playground/
 agents_playground/*
+.agents_playground/
+.agents_playground/*
