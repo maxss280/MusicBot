@@ -10,6 +10,13 @@ MusicBot is the original Discord music bot written for [Python](https://www.pyth
 
 **This is a fork of the original MusicBot project.** All git operations now use `maxss280` remote.
 
+### Branch Information
+- **`master`**: Active development - may be unstable, breaking changes accepted
+- **`Stable-1.0.0`**: First stable release - for production use, only critical fixes
+- **`review`**: Development branch for newer features
+
+For production deployments, use the `Stable-1.0.0` branch. For development and testing, use `master`.
+
 ![Main](https://i.imgur.com/FWcHtcS.png)
 
 ## Setup

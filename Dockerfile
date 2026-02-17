@@ -38,6 +38,13 @@ RUN apk update && apk add --no-cache \
   libffi \
   libsodium
 
+# Create sample_config directory with example files for docker-entrypoint
+RUN mkdir -p /musicbot/sample_config/i18n && \
+    cp /musicbot/config/example_*.ini /musicbot/sample_config/ && \
+    cp /musicbot/config/example_aliases.json /musicbot/sample_config/ && \
+    cp /musicbot/config/_autoplaylist.txt /musicbot/sample_config/ && \
+    cp /musicbot/config/i18n/*.json /musicbot/sample_config/i18n/
+
 # Create volumes for audio cache, config, data and logs
 VOLUME ["/musicbot/audio_cache", "/musicbot/config", "/musicbot/data", "/musicbot/logs"]
 
