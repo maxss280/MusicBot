@@ -75,8 +75,7 @@ youtube_dl.utils.bug_reports_message = lambda: ""
 class Downloader:
     def __init__(self, bot: "MusicBot") -> None:
         """
-        Set up YoutubeDL and related config as well as a thread pool executor
-        to run concurrent extractions.
+        Set up YoutubeDL and related config for async extraction operations.
         """
         self.bot: "MusicBot" = bot
         self.download_folder: pathlib.Path = bot.config.audio_cache_path
