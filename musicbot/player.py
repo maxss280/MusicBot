@@ -437,28 +437,18 @@ class MusicPlayer(EventEmitter, Serializable):
                 
                 # Verify opus is loaded before attempting playback
                 if not opus.is_loaded():
-                    log.error("Opus library not loaded! Cannot play audio.")
-                    log.error("Opus _lib state: %s", getattr(opus, '_lib', 'NOT SET'))
-                    # Try to reload opus
-                    log.info("Attempting to reload opus library...")
+                    log.error("Opus library not loaded! Attempting reload...")
+                    # Try to reload using opus_loader
                     try:
-                        # Check if library can be found
-                        import ctypes.util
-                        lib_path = ctypes.util.find_library('opus')
-                        log.info("ctypes.util.find_library('opus') = %s", lib_path)
-                        
-                        opus._load_default()  # pylint: disable=protected-access
-                        log.info("_load_default() completed, checking status...")
-                        log.info("opus.is_loaded() = %s", opus.is_loaded())
-                        log.info("opus._lib = %s", opus._lib)
-                        
+                        from .opus_loader import load_opus_lib
+                        load_opus_lib()
                         if opus.is_loaded():
                             log.info("Opus library successfully reloaded")
                         else:
-                            log.error("Opus reload failed, library still not loaded")
+                            log.error("Opus reload failed")
                             raise RuntimeError("Opus library is not loaded after reload attempt")
                     except Exception as e:
-                        log.error("Failed to reload opus - Exception: %s", e, exc_info=True)
+                        log.error("Failed to reload opus: %s", e, exc_info=True)
                         raise RuntimeError("Opus library is not loaded") from e
                 
                 self.voice_client.play(self._source, after=self._playback_finished)
