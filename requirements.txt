@@ -1,1 +1,1 @@
-pynacl >= 1.0.0
+pynacl
