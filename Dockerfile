@@ -3,6 +3,9 @@ FROM python:3.11-alpine
 ARG GIT_REPO=https://github.com/maxss280/MusicBot.git
 ARG GIT_BRANCH=
 
+# Install git for cloning
+RUN apk update && apk add --no-cache git
+
 # Clone the repository
 WORKDIR /musicbot
 RUN if [ -z "${GIT_BRANCH}" ]; then \
@@ -10,6 +13,9 @@ RUN if [ -z "${GIT_BRANCH}" ]; then \
     else \
       git clone -b ${GIT_BRANCH} ${GIT_REPO} .; \
     fi
+
+# Clean up git from build
+RUN rm -rf .git
 
 # Install build dependencies for pip
 RUN apk update && apk add --no-cache --virtual .build-deps \
