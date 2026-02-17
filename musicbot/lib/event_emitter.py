@@ -22,9 +22,10 @@ class EventEmitter:
         self._events: EventDict = collections.defaultdict(list)
         try:
             self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
-        except RuntimeError:
-            self.loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
+        except RuntimeError as e:
+            raise RuntimeError(
+                "EventEmitter must be instantiated within an async context"
+            ) from e
         self._task_pool: Set[AsyncTask] = set()
 
     def emit(self, event: str, *args: Any, **kwargs: Any) -> None:

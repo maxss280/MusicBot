@@ -292,7 +292,7 @@ class MusicBot(discord.Client):
                     e,
                 )
                 self.config.spotify_enabled = False
-                time.sleep(5)  # make sure they see the problem
+                await asyncio.sleep(5)  # make sure they see the problem
         else:
             try:
                 log.warning(

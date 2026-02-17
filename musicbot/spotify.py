@@ -366,11 +366,15 @@ class Spotify:
         self.guest_mode: bool = client_id is None or client_secret is None
 
         self.aiosession = aiosession
-        try:
-            self.loop = loop if loop else asyncio.get_running_loop()
-        except RuntimeError:
-            self.loop = loop if loop else asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
+        if loop is None:
+            try:
+                self.loop = asyncio.get_running_loop()
+            except RuntimeError as e:
+                raise RuntimeError(
+                    "Spotify must be instantiated within an async context or with a loop parameter"
+                ) from e
+        else:
+            self.loop = loop
 
         self._token: Optional[Dict[str, Any]] = None
 
