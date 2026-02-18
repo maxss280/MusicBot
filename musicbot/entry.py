@@ -476,18 +476,27 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
                 # check if cache size matches remote, basic validation.
                 if file_cache_path:
-                    local_size = os.path.getsize(file_cache_path)
-                    remote_size = int(self.info.http_header("CONTENT-LENGTH", 0))
-
-                    if local_size != remote_size:
+                    # Respect the configuration option to skip verification.
+                    if self.playlist.bot.config.skip_cache_size_check:
                         log.debug(
-                            "Local size different from remote size. Re-downloading..."
+                            "Cache size verification disabled; using cached file directly: %s",
+                            file_cache_path,
                         )
-                        await self._really_download()
-                    else:
-                        log.debug("Download already cached at:  %s", file_cache_path)
                         self.filename = file_cache_path
                         self._is_downloaded = True
+                    else:
+                        local_size = os.path.getsize(file_cache_path)
+                        remote_size = int(self.info.http_header("CONTENT-LENGTH", 0))
+
+                        if local_size != remote_size:
+                            log.debug(
+                                "Local size different from remote size. Re-downloading..."
+                            )
+                            await self._really_download()
+                        else:
+                            log.debug("Download already cached at:  %s", file_cache_path)
+                            self.filename = file_cache_path
+                            self._is_downloaded = True
 
                 # nothing cached, time to download for real.
                 else:

@@ -76,6 +76,13 @@ class AudioFileCache:
 
         return ""
 
+    def is_cached(self, filename: str) -> bool:
+        """Convenient wrapper returning True if a file is cached.
+
+        Uses :meth:`get_if_cached` internally.
+        """
+        return bool(self.get_if_cached(filename))
+
     def ensure_cache_dir_exists(self) -> None:
         """Check for and create the cache directory path or raise an error"""
         if not self.cache_dir_exists():

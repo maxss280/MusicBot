@@ -321,6 +321,17 @@ class Config:
             getter="getboolean",
             comment="Allow MusicBot to keep downloaded media, or delete it right away.",
         )
+        self.skip_cache_size_check: bool = self.register.init_option(
+            section="MusicBot",
+            option="SkipCacheSizeCheck",
+            dest="skip_cache_size_check",
+            default=ConfigDefaults.skip_cache_size_check,
+            getter="getboolean",
+            comment=(
+                "If yes, MusicBot will trust any cached file and skip remote size/checksum verification. "
+                "If no, the original size check is performed."
+            ),
+        )
         self.storage_limit_bytes: int = self.register.init_option(
             section="MusicBot",
             option="StorageLimitBytes",
@@ -1259,6 +1270,7 @@ class ConfigDefaults:
     skips_required: int = 4
     skip_ratio_required: float = 0.5
     save_videos: bool = True
+    skip_cache_size_check: bool = True
     storage_retain_autoplay: bool = True
     storage_limit_bytes: int = 0
     storage_limit_days: int = 0
