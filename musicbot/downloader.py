@@ -205,19 +205,6 @@ class Downloader:
                 return str(p)
         return None
 
-        """
-        Uses ytdlp utils functions to re-randomize UA strings in YoutubeDL
-        objects and header check requests.
-        """
-        # ignore this call if static UA is configured.
-        if not self.bot.config.ytdlp_user_agent:
-            return
-
-        new_ua = youtube_dl.utils.networking.random_user_agent()
-        self.unsafe_ytdl.params["http_headers"]["User-Agent"] = new_ua
-        self.safe_ytdl.params["http_headers"]["User-Agent"] = new_ua
-        self.http_req_headers["User-Agent"] = new_ua
-
     def get_url_or_none(self, url: str) -> Optional[str]:
         """
         Uses ytdl.utils.url_or_none() to validate a playable URL.
