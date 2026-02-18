@@ -3,6 +3,7 @@ import copy
 import datetime
 import functools
 import hashlib
+import re
 import importlib
 import logging
 import os
@@ -176,6 +177,34 @@ class Downloader:
         del self.unsafe_ytdl.params["cookiefile"]
 
     def randomize_user_agent_string(self) -> None:
+        """Randomize the User-Agent string for both yt‑dl instances."""
+        """
+        Uses ytdlp utils functions to re‑randomize UA strings in YoutubeDL
+        objects and header check requests.
+        """
+        # ignore this call if static UA is configured.
+        if not self.bot.config.ytdlp_user_agent:
+            return
+
+        new_ua = youtube_dl.utils.networking.random_user_agent()
+        self.unsafe_ytdl.params["http_headers"]["User-Agent"] = new_ua
+        self.safe_ytdl.params["http_headers"]["User-Agent"] = new_ua
+        self.http_req_headers["User-Agent"] = new_ua
+
+    def _cached_file_by_pattern(self, video_id: str, qhash: str) -> Optional[str]:
+        """Search the cache folder for a file matching the yt‑dl naming pattern.
+
+        The pattern used by yt‑dl is ``youtube-{id}-{title}-{qhash}.{ext}``.  Since we don't
+        know the title or extension ahead of time, we wildcard those parts.
+        """
+        if not self.download_folder:
+            return None
+        pattern = f"youtube-{video_id}-*-{qhash}.*"
+        for p in self.download_folder.glob(pattern):
+            if p.is_file():
+                return str(p)
+        return None
+
         """
         Uses ytdlp utils functions to re-randomize UA strings in YoutubeDL
         objects and header check requests.
@@ -314,32 +343,26 @@ class Downloader:
     ) -> "YtdlpResponseDict":
         """
         Runs ytdlp.extract_info with all arguments passed to this function.
-        If `song_subject` is a valid URL, extraction will add HEAD request headers.
-        Resulting data is passed through ytdlp's sanitize_info and returned
-        inside of a YtdlpResponseDict wrapper.
+        If the requested media is already present in the audio cache, this method **short‑circuits**
+        the entire yt‑dl extraction process – no network request, no OAuth2 handling – and returns
+        a minimal ``YtdlpResponseDict`` that points directly at the cached file.
 
-        Single-entry search results are returned as if they were top-level extractions.
-        Links for spotify tracks, albums, and playlists also get special filters.
+        If the media is not cached, the original extraction flow is used (including the optional
+        HEAD request that we already skip when a cached file exists).
 
-        :param: song_subject: a song url or search subject.
-        :kwparam: as_stream: If we should try to queue the URL anyway and let ffmpeg figure it out.
+        Single‑entry search results are returned as if they were top‑level extractions.
+        Links for Spotify tracks, albums, and playlists also get special filters.
+
+        :param song_subject: a song URL or search subject.
+        :kwparam as_stream: If we should try to queue the URL anyway and let ffmpeg figure it out.
 
         :returns: YtdlpResponseDict object containing sanitized extraction data.
 
-        :raises: musicbot.exceptions.MusicbotError
-            if event loop is closed and cannot be used for extraction.
-
-        :raises: musicbot.exceptions.ExtractionError
-            for errors in MusicBot's internal filtering and pre-processing of extraction queries.
-
-        :raises: musicbot.exceptions.SpotifyError
-            for issues with Musicbot's Spotify API request and data handling.
-
-        :raises: yt_dlp.utils.YoutubeDLError
-            as a base exception for any exceptions raised by yt_dlp.
-
-        :raises: yt_dlp.networking.exceptions.RequestError
-            as a base exception for any networking errors raised by yt_dlp.
+        :raises: musicbot.exceptions.MusicbotError if event loop is closed and cannot be used for extraction.
+        :raises: musicbot.exceptions.ExtractionError for errors in MusicBot's internal filtering and pre‑processing.
+        :raises: musicbot.exceptions.SpotifyError for issues with Musicbot's Spotify API.
+        :raises: yt_dlp.utils.YoutubeDLError as a base exception for any yt‑dl errors.
+        :raises: yt_dlp.networking.exceptions.RequestError for any networking errors raised by yt‑dl.
         """
         # handle local media playback without ever touching ytdl and friends.
         # We do this here so auto playlist features can take advantage of this as well.
@@ -359,6 +382,26 @@ class Downloader:
             md5.update(song_subject.encode("utf8"))
             song_subject_hash = md5.hexdigest()[-8:]
 
+        # If this is a YouTube URL and we already have the file cached, we can skip the entire yt‑dl extraction.
+        if ("youtube.com" in song_subject.lower() or "youtu.be" in song_subject.lower()):
+            # Attempt to extract the video ID from the URL.
+            video_id_match = re.search(r"(?:v=|/)([A-Za-z0-9_-]{11})", song_subject)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+                cached_path = self._cached_file_by_pattern(video_id, song_subject_hash)
+                if cached_path:
+                    # Build a minimal response dict that points directly at the cached file.
+                    minimal_data = {
+                        "__input_subject": song_subject,
+                        "__header_data": None,
+                        "__expected_filename": cached_path,
+                        "_type": "cached",
+                        "url": song_subject,
+                        "title": pathlib.Path(cached_path).stem,
+                        "extractor": "youtube",
+                        "id": video_id,
+                    }
+                    return YtdlpResponseDict(minimal_data)
         # Use ytdl or one of our custom integration to get info.
         data = await self._filtered_extract_info(
             song_subject,
