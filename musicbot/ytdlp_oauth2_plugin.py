@@ -130,13 +130,16 @@ class YouTubeOAuth2Handler(InfoExtractor):  # type: ignore[misc]
             for key in ("access_token", "expires", "refresh_token", "token_type")
         )
 
-    def initialize_oauth(self) -> TokenDict:
+    def initialize_oauth(self, force_refresh: bool = False) -> TokenDict:
         """Validate existing token data or start the OAuth2 flow.
 
         After a token is successfully obtained (either from cache or from a new
-        authorization), the handler sets ``self._use_oauth2 = True`` so that all
+        authorization), the handler sets ``self._use_oauth2 = True`` so that
         subsequent yt‑dlp requests are patched with the ``Authorization``
         header.
+
+        Args:
+            force_refresh: If True, always refresh the token even if not expired.
         """
         log.everything("init oauth for ytdlp")  # type: ignore[attr-defined]
         token_data = self.get_token()
@@ -156,17 +159,39 @@ class YouTubeOAuth2Handler(InfoExtractor):  # type: ignore[misc]
         # the Authorization header for every YouTube request.
         self._use_oauth2 = True
 
-        if (
+        # Check if token is expired or force refresh is requested
+        # Also refresh if token will expire in less than 5 minutes
+        if force_refresh or (
             token_data.get("expires", 0)
-            < datetime.datetime.now(datetime.timezone.utc).timestamp() + 60
+            < datetime.datetime.now(datetime.timezone.utc).timestamp() + 300
         ):
             log.everything(  # type: ignore[attr-defined]
-                "Access token expired, refreshing"
+                "Access token expired or expiring soon, refreshing"
             )
-            token_data = self.refresh_token(token_data["refresh_token"])
-            self.store_token(token_data)
+            try:
+                token_data = self.refresh_token(token_data["refresh_token"])
+                self.store_token(token_data)
+            except Exception as e:
+                log.warning("Failed to refresh token: %s, will try re-authorizing", e)
+                # Token might be completely invalid, delete and re-authorize
+                self.invalidate_token()
+                token_data = self.authorize()
+                self.store_token(token_data)
 
         return token_data
+
+    def invalidate_token(self) -> None:
+        """
+        Invalidate the stored token, forcing a refresh or re-auth on next use.
+        """
+        log.info("Invalidating OAuth2 token")
+        self._client_token_data = {}
+        if self._oauth2_token_path.is_file():
+            try:
+                self._oauth2_token_path.unlink()
+                log.info("Deleted OAuth2 token file")
+            except OSError as e:
+                log.error("Failed to delete OAuth2 token file: %s", e)
 
     def handle_oauth(self, request: yt_dlp.networking.Request) -> None:
         """
@@ -370,6 +395,24 @@ def enable_ytdlp_oauth2_plugin(config: "Config") -> None:
                 elif self._use_oauth2:
                     self.handle_oauth(request)
                 return request
+
+            def _download_webpage(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+                try:
+                    return super()._download_webpage(*args, **kwargs)
+                except Exception as e:
+                    # Check if this is an OAuth2 auth error (HTTP 400)
+                    err_str = str(e)
+                    if (
+                        self._use_oauth2
+                        and ("HTTP Error 400" in err_str or "Bad Request" in err_str)
+                        and "youtube" in err_str.lower()
+                    ):
+                        log.warning(
+                            "Detected OAuth2 authentication error (HTTP 400), "
+                            "invalidating token to force refresh on next attempt"
+                        )
+                        self.invalidate_token()
+                    raise
 
             @property
             def is_authenticated(self) -> bool:
