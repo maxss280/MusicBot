@@ -131,8 +131,12 @@ class YouTubeOAuth2Handler(InfoExtractor):  # type: ignore[misc]
         )
 
     def initialize_oauth(self) -> TokenDict:
-        """
-        Validates existing OAuth2 data or triggers authorization flow.
+        """Validate existing token data or start the OAuth2 flow.
+
+        After a token is successfully obtained (either from cache or from a new
+        authorization), the handler sets ``self._use_oauth2 = True`` so that all
+        subsequent yt‑dlp requests are patched with the ``Authorization``
+        header.
         """
         log.everything("init oauth for ytdlp")  # type: ignore[attr-defined]
         token_data = self.get_token()
@@ -147,6 +151,10 @@ class YouTubeOAuth2Handler(InfoExtractor):  # type: ignore[misc]
 
             if not token_data:
                 raise YtdlpOAuth2Exception("Ytdlp OAuth2 failed to fetch token data.")
+
+        # Mark the handler as active – this ensures ``_create_request`` injects
+        # the Authorization header for every YouTube request.
+        self._use_oauth2 = True
 
         if (
             token_data.get("expires", 0)

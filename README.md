@@ -22,7 +22,7 @@ For production deployments, use the `Stable-1.0.0` branch. For development and t
 ## Setup
 Setting up the MusicBot is relatively painless - just follow one of the [guides](https://just-some-bots.github.io/MusicBot/). After that, configure the bot to ensure its connection to Discord.
 
-The main configuration file is `config/options.ini`, but it is not included by default. Simply make a copy of `example_options.ini` and rename it to `options.ini`. See [`example_options.ini`](./config/example_options.ini) for more information about configurations.
+The main configuration file is `config/options.ini`, but it is not included by default. Simply make a copy of `example_options.ini` and rename it to `options.ini`. See [`example_options.ini`](./config/example_options.ini) for more information about configurations. When OAuth2 is enabled, the token is stored in the `data/oauth2.token` file and will be refreshed automatically if you provide `YtdlpOAuth2ClientID` and `YtdlpOAuth2ClientSecret` in the config.
 
 New option **`SkipCacheSizeCheck`** (default yes) lets you bypass remote size/checksum verification for cached audio files, speeding up playback when you trust your cache.
 
