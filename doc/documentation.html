@@ -811,6 +811,16 @@ def deactivate(self) -> None</div>
                     <div class="code-block">def handle_new_cache_entry(self, entry)</div>
                     <p>Add new entry to cache and enforce cache limits.</p>
                     
+                    <h3>Metadata Sidecar Files</h3>
+                    <div class="code-block">def save_metadata(self, audio_file_path: str, metadata: Dict[str, Any]) -> bool</div>
+                    <p>Save metadata as a JSON sidecar file next to the cached audio file. Stores title, duration, and URL.</p>
+                    
+                    <div class="code-block">def load_metadata(self, audio_file_path: str) -> Dict[str, Any]</div>
+                    <p>Load metadata from the JSON sidecar file if it exists.</p>
+                    
+                    <div class="code-block">def get_metadata_for_cached_file(self, video_id: str, qhash: str) -> Dict[str, Any]</div>
+                    <p>Find metadata for a cached file by video ID and qhash. Used by the cache shortcut to retrieve metadata without network requests.</p>
+                    
                     <h3>Cache Path</h3>
                     <div class="code-block">@property
 def folder(self) -> pathlib.Path</div>

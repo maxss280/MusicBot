@@ -24,6 +24,14 @@ Setting up the MusicBot is relatively painless - just follow one of the [guides]
 
 The main configuration file is `config/options.ini`, but it is not included by default. Simply make a copy of `example_options.ini` and rename it to `options.ini`. See [`example_options.ini`](./config/example_options.ini) for more information about configurations. When OAuth2 is enabled, the token is stored in the `data/oauth2.token` file and will be refreshed automatically if you provide `YtdlpOAuth2ClientID` and `YtdlpOAuth2ClientSecret` in the config.
 
+### Cache Shortcut (OAuth2 Bypass)
+When a YouTube video is already cached in the audio cache folder, MusicBot **short-circuits** the entire yt-dlp extraction process:
+- **No OAuth2 required** - Authentication is completely bypassed for cached files
+- **Metadata sidecar** - Title and duration are stored in a `.json` file alongside the cached audio
+- **Faster playback** - Cached files play instantly without any network requests
+
+This is especially useful when OAuth2 is enabled but you want to avoid authentication for content you've already downloaded.
+
 New option **`SkipCacheSizeCheck`** (default yes) lets you bypass remote size/checksum verification for cached audio files, speeding up playback when you trust your cache.
 
 ### Commands
