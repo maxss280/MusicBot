@@ -1150,6 +1150,9 @@ complex_aliases: ComplexAliases = {}</div>
                         <li><strong>SaveVideos</strong> - Boolean - <code>yes</code>
                             <p>Determines if downloaded videos will be saved to the audio_cache folder permanently. If "yes", videos will not be re-downloaded if queued again, at the cost of hard-drive space.</p>
                         </li>
+                        <li><strong>SkipCacheSizeCheck</strong> - Boolean - <code>yes</code>
+                            <p>If yes, MusicBot will trust any cached file and skip the remote size/checksum verification. If no, the original size check is performed.</p>
+                        </li>
                         <li><strong>StorageRetainAutoPlay</strong> - Boolean - <code>yes</code>
                             <p>Never purge videos from cache if they are listed in the auto playlist file. Only applies while SaveVideos option is enabled.</p>
                         </li>
