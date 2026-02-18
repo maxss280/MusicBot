@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 from .constants import DATA_FILE_CACHEMAP, DEFAULT_DATA_DIR
 from .utils import format_size_from_bytes
@@ -410,6 +410,61 @@ class AudioFileCache:
             self.bot.create_task(
                 self.save_autoplay_cachemap(), name="MB_SaveAutoPlayCachemap"
             )
+
+    def _get_metadata_path(self, audio_file_path: pathlib.Path) -> pathlib.Path:
+        """Get the path for the metadata sidecar file."""
+        return audio_file_path.with_suffix(audio_file_path.suffix + ".json")
+
+    def save_metadata(self, audio_file_path: str, metadata: Dict[str, Any]) -> bool:
+        """Save metadata as a JSON sidecar file next to the cached audio file.
+
+        :param audio_file_path: Path to the cached audio file.
+        :param metadata: Dictionary containing metadata (title, duration, etc.).
+        :returns: True if saved successfully, False otherwise.
+        """
+        try:
+            audio_path = pathlib.Path(audio_file_path)
+            metadata_path = self._get_metadata_path(audio_path)
+            with open(metadata_path, "w", encoding="utf8") as fh:
+                json.dump(metadata, fh)
+            return True
+        except (OSError, TypeError) as e:
+            log.error("Failed to save cache metadata due to: %s", e)
+            return False
+
+    def load_metadata(self, audio_file_path: str) -> Dict[str, Any]:
+        """Load metadata from the JSON sidecar file if it exists.
+
+        :param audio_file_path: Path to the cached audio file.
+        :returns: Dictionary containing metadata, or empty dict if not found.
+        """
+        try:
+            audio_path = pathlib.Path(audio_file_path)
+            metadata_path = self._get_metadata_path(audio_path)
+            if not metadata_path.is_file():
+                return {}
+            with open(metadata_path, "r", encoding="utf8") as fh:
+                return json.load(fh)
+        except (OSError, json.JSONDecodeError) as e:
+            log.error("Failed to load cache metadata due to: %s", e)
+            return {}
+
+    def get_metadata_for_cached_file(self, video_id: str, qhash: str) -> Dict[str, Any]:
+        """Find metadata for a cached file by video ID and qhash.
+
+        Searches the cache folder for any file matching the pattern and loads its metadata.
+
+        :param video_id: YouTube video ID.
+        :param qhash: Query hash used in the filename.
+        :returns: Dictionary containing metadata, or empty dict if not found.
+        """
+        if not self.cache_path:
+            return {}
+        pattern = f"youtube-{video_id}-*-{qhash}.*"
+        for p in self.cache_path.glob(pattern):
+            if p.is_file():
+                return self.load_metadata(str(p))
+        return {}
 
     def _check_autoplay_cachemap(self, filename: pathlib.Path) -> bool:
         """

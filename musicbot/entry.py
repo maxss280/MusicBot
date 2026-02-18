@@ -526,6 +526,15 @@ class URLPlaylistEntry(BasePlaylistEntry):
                         self.filename,
                     )
 
+            # Save metadata to sidecar file for cache retrieval
+            if self.filename and self.playlist.bot.config.save_videos:
+                metadata = {
+                    "title": self.title,
+                    "duration": self.duration,
+                    "url": self.url,
+                }
+                self.filecache.save_metadata(self.filename, metadata)
+
             if self.playlist.bot.config.use_experimental_equalization:
                 try:
                     self._aopt_eq = await self.get_mean_volume(self.filename)

@@ -377,6 +377,10 @@ class Downloader:
                 video_id = video_id_match.group(1)
                 cached_path = self._cached_file_by_pattern(video_id, song_subject_hash)
                 if cached_path:
+                    # Load metadata from sidecar file if available.
+                    metadata = self.bot.filecache.get_metadata_for_cached_file(
+                        video_id, song_subject_hash
+                    )
                     # Build a minimal response dict that points directly at the cached file.
                     minimal_data = {
                         "__input_subject": song_subject,
@@ -384,7 +388,8 @@ class Downloader:
                         "__expected_filename": cached_path,
                         "_type": "cached",
                         "url": song_subject,
-                        "title": pathlib.Path(cached_path).stem,
+                        "title": metadata.get("title", pathlib.Path(cached_path).stem),
+                        "duration": metadata.get("duration"),
                         "extractor": "youtube",
                         "id": video_id,
                     }
