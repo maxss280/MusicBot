@@ -199,7 +199,7 @@ class Downloader:
         """
         if not self.download_folder:
             return None
-        pattern = f"youtube-{video_id}-*-{qhash}.*"
+        pattern = f"youtube-{video_id}-*.*"
         for p in self.download_folder.glob(pattern):
             if p.is_file():
                 return str(p)

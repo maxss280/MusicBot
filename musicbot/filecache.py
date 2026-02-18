@@ -455,12 +455,12 @@ class AudioFileCache:
         Searches the cache folder for any file matching the pattern and loads its metadata.
 
         :param video_id: YouTube video ID.
-        :param qhash: Query hash used in the filename.
+        :param qhash: Query hash used in the filename (unused, kept for API compatibility).
         :returns: Dictionary containing metadata, or empty dict if not found.
         """
         if not self.cache_path:
             return {}
-        pattern = f"youtube-{video_id}-*-{qhash}.*"
+        pattern = f"youtube-{video_id}-*.*"
         for p in self.cache_path.glob(pattern):
             if p.is_file():
                 return self.load_metadata(str(p))
