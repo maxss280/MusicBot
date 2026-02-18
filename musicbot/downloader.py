@@ -373,8 +373,13 @@ class Downloader:
         if not data:
             raise ExtractionError("Song info extraction returned no data.")
 
-        # always get headers for our downloadable.
-        headers = await self.get_url_headers(data.get("url", song_subject))
+        # always get headers for our downloadable, unless we have a cached file.
+        expected_fname = data.get("__expected_filename", "")
+        if expected_fname and self.bot.filecache.is_cached(expected_fname):
+            # Cached file exists; skip HEAD request to avoid OAuth flow.
+            headers = {}
+        else:
+            headers = await self.get_url_headers(data.get("url", song_subject))
 
         # if we made it here, put our request data into the extraction.
         data["__input_subject"] = song_subject
@@ -414,17 +419,8 @@ class Downloader:
         :raises: musicbot.exceptions.MusicbotError
             if event loop is closed and cannot be used for extraction.
 
-        :raises: musicbot.exceptions.ExtractionError
+        :throws: musicbot.exceptions.ExtractionError
             for errors in MusicBot's internal filtering and pre-processing of extraction queries.
-
-        :raises: musicbot.exceptions.SpotifyError
-            for issues with Musicbot's Spotify API request and data handling.
-
-        :raises: yt_dlp.utils.YoutubeDLError
-            as a base exception for any exceptions raised by yt_dlp.
-
-        :raises: yt_dlp.networking.exceptions.RequestError
-            as a base exception for any networking errors raised by yt_dlp.
         """
         log.noise(f"Called extract_info with:  '{song_subject}', {args}, {kwargs}")  # type: ignore[attr-defined]
         as_stream_url = kwargs.pop("as_stream", False)
@@ -580,9 +576,6 @@ class YtdlpResponseDict(YUserDict):
     Use of the dict subscript notation is not advised and could/should be
     removed in the future, in favor of typed properties and processing
     made available herein.
-
-    See ytdlp doc string in InfoExtractor for info on data:
-    https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/common.py
     """
 
     def __init__(self, data: Dict[str, Any]) -> None:
@@ -693,7 +686,7 @@ class YtdlpResponseDict(YUserDict):
     @property
     def thumbnail_url(self) -> str:
         """
-        Get a thumbnail url if available, or create one if possible, otherwise returns an empty string.
+        Get a thumbnail url if available, or create one from known patterns.
         Note, the URLs returned from this function may be time-sensitive.
         In the case of spotify, URLs may not last longer than a day.
         """
