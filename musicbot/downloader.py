@@ -103,6 +103,7 @@ class Downloader:
             ytdl_format_options["extractor_args"] = {
                 "youtube": {"player_client": ["android", "web"]}
             }
+            ytdl_format_options["format"] = "18/bestaudio/best"
 
         if bot.config.ytdlp_proxy:
             log.info("Yt-dlp will use your configured proxy server.")
