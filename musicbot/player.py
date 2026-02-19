@@ -52,6 +52,16 @@ class InMemoryAudioSource(AudioSource):
         self._size = len(data)
         self._closed = False
 
+    @property
+    def volume(self) -> float:
+        """Get the current volume level."""
+        return self._volume
+
+    @volume.setter
+    def volume(self, value: float) -> None:
+        """Set the volume level (0.0 to 1.0)."""
+        self._volume = max(0.0, min(value, 2.0))
+
     def read(self) -> bytes:
         """Read 20ms of audio data (3840 bytes for 48kHz stereo 16-bit PCM)."""
         if self._closed:
