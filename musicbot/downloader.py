@@ -100,6 +100,9 @@ class Downloader:
                 bot.config.cookies_path,
             )
             ytdl_format_options["cookiefile"] = bot.config.cookies_path
+            ytdl_format_options["extractor_args"] = {
+                "youtube": {"player_client": ["android"]}
+            }
 
         if bot.config.ytdlp_proxy:
             log.info("Yt-dlp will use your configured proxy server.")
