@@ -470,8 +470,10 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 # Determine audio source: use in-memory if available and config is enabled
                 audio_source: Union[str, io.BytesIO]
+                pipe = False
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     audio_source = io.BytesIO(entry.memory_data)
+                    pipe = True
                     log.ffmpeg(  # type: ignore[attr-defined]
                         "Using in-memory audio source for: %s (%d bytes)",
                         entry.title,
@@ -499,6 +501,7 @@ class MusicPlayer(EventEmitter, Serializable):
                             before_options=boptions,
                             options=aoptions,
                             stderr=stderr_io,
+                            pipe=pipe,
                         ),
                         self.volume,
                     ),
