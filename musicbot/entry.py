@@ -212,6 +212,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
         self._start_time: Optional[float] = None
         self._playback_rate: Optional[float] = None
+        self._loudnorm_gain: float = 1.0  # Gain multiplier from loudnorm EQ
         self.playlist: "Playlist" = playlist
         self.downloader: "Downloader" = playlist.bot.downloader
         self.filecache: "AudioFileCache" = playlist.bot.filecache
@@ -583,6 +584,10 @@ class URLPlaylistEntry(BasePlaylistEntry):
             if self.playlist.bot.config.use_experimental_equalization:
                 try:
                     self._aopt_eq = await self.get_mean_volume(self.filename)
+                    if self._aopt_eq:
+                        self._loudnorm_gain = await self.get_loudnorm_gain(
+                            self.filename
+                        )
 
                 # Unfortunate evil that we abide for now...
                 except Exception:  # pylint: disable=broad-exception-caught
@@ -733,6 +738,28 @@ class URLPlaylistEntry(BasePlaylistEntry):
             f"offset={offset}"
         )
         return loudnorm_opts
+
+    async def get_loudnorm_gain(self, input_file: str) -> float:
+        """
+        Extract loudnorm offset in dB and convert to linear gain multiplier.
+        Returns the gain multiplier (1.0 = no change).
+        """
+        log.debug("Calculating loudnorm gain for: %s", input_file)
+
+        # Get the loudnorm options (which already extracts offset)
+        loudnorm_opts = await self.get_mean_volume(input_file)
+
+        # Extract offset from loudnorm_opts string
+        offset_match = re.search(r"offset=([\-]?\d+\.?\d*)", loudnorm_opts)
+        if offset_match:
+            offset_db = float(offset_match.group(1))
+            # Convert dB to linear gain: gain = 10^(offset/20)
+            gain = 10 ** (offset_db / 20)
+            log.debug("Loudnorm offset: %.2f dB, gain: %.4f", offset_db, gain)
+            return gain
+        else:
+            log.warning("Could not extract loudnorm offset, using 1.0 (no gain)")
+            return 1.0
 
     async def _really_download(self) -> None:
         """
@@ -1038,6 +1065,7 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
         self._start_time: Optional[float] = None
         self._playback_rate: Optional[float] = None
+        self._loudnorm_gain: float = 1.0  # Gain multiplier from loudnorm EQ
         self.playlist: "Playlist" = playlist
 
         self.info: YtdlpResponseDict = info
@@ -1291,6 +1319,10 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
             if self.playlist.bot.config.use_experimental_equalization:
                 try:
                     self._aopt_eq = await self.get_mean_volume(self.filename)
+                    if self._aopt_eq:
+                        self._loudnorm_gain = await self.get_loudnorm_gain(
+                            self.filename
+                        )
 
                 # Unfortunate evil that we abide for now...
                 except Exception:  # pylint: disable=broad-exception-caught

@@ -36,6 +36,7 @@ class InMemoryAudioSource(AudioSource):
         self,
         data: bytes,
         volume: float = 1.0,
+        loudnorm_gain: float = 1.0,
     ) -> None:
         """
         Audio source that reads from in-memory data instead of a file.
@@ -43,9 +44,11 @@ class InMemoryAudioSource(AudioSource):
 
         :param data: Audio data in bytes
         :param volume: Initial volume level (0.0 to 1.0)
+        :param loudnorm_gain: Gain multiplier from loudnorm EQ processing
         """
         self._data = io.BytesIO(data)
         self._volume = volume
+        self._loudnorm_gain = loudnorm_gain
         self._position = 0
         self._size = len(data)
         self._closed = False
@@ -64,7 +67,55 @@ class InMemoryAudioSource(AudioSource):
             self._closed = True
             return b""
 
+        if self._loudnorm_gain != 1.0:
+            data = self._apply_loudnorm_gain(data)
+
+        if self._volume != 1.0:
+            data = self._apply_volume(data)
+
         return data
+
+    def _apply_loudnorm_gain(self, frame: bytes) -> bytes:
+        """Apply loudnorm gain to PCM16 audio samples."""
+        if len(frame) % 2 != 0:
+            return frame
+
+        samples = bytearray(frame)
+        gain = self._loudnorm_gain
+
+        for i in range(0, len(samples), 2):
+            sample = int.from_bytes(samples[i : i + 2], "little", signed=True)
+            adjusted = int(sample * gain)
+
+            if adjusted < -32768:
+                adjusted = -32768
+            elif adjusted > 32767:
+                adjusted = 32767
+
+            samples[i : i + 2] = adjusted.to_bytes(2, "little", signed=True)
+
+        return bytes(samples)
+
+    def _apply_volume(self, frame: bytes) -> bytes:
+        """Apply volume multiplier to PCM16 audio samples."""
+        if len(frame) % 2 != 0:
+            return frame
+
+        samples = bytearray(frame)
+        volume = self._volume
+
+        for i in range(0, len(samples), 2):
+            sample = int.from_bytes(samples[i : i + 2], "little", signed=True)
+            adjusted = int(sample * volume)
+
+            if adjusted < -32768:
+                adjusted = -32768
+            elif adjusted > 32767:
+                adjusted = 32767
+
+            samples[i : i + 2] = adjusted.to_bytes(2, "little", signed=True)
+
+        return bytes(samples)
 
     def cleanup(self) -> None:
         """Cleanup the source and release resources."""
@@ -469,42 +520,48 @@ class MusicPlayer(EventEmitter, Serializable):
                     aoptions = "-vn"
 
                 # Determine audio source: use in-memory if available and config is enabled
-                audio_source: Union[str, io.BytesIO]
-                pipe = False
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
-                    audio_source = io.BytesIO(entry.memory_data)
-                    pipe = True
+                    # Use InMemoryAudioSource directly for in-memory audio
+                    # This avoids FFmpeg and its stdin buffering issues
+                    loudnorm_gain = getattr(entry, "_loudnorm_gain", 1.0)
+                    source = InMemoryAudioSource(
+                        entry.memory_data,
+                        volume=self.volume,
+                        loudnorm_gain=loudnorm_gain,
+                    )
                     log.ffmpeg(  # type: ignore[attr-defined]
-                        "Using in-memory audio source for: %s (%d bytes)",
+                        "Using pure in-memory audio source for: %s (%d bytes)",
                         entry.title,
                         len(entry.memory_data),
                     )
                 else:
+                    # Use FFmpeg with file path for disk-based audio
                     audio_source = entry.filename
                     log.ffmpeg(  # type: ignore[attr-defined]
                         "Using file-based audio source: %s",
                         entry.filename,
                     )
 
-                log.ffmpeg(  # type: ignore[attr-defined]
-                    "Creating player with options: %s %s",
-                    boptions,
-                    aoptions,
-                )
+                    log.ffmpeg(  # type: ignore[attr-defined]
+                        "Creating player with options: %s %s",
+                        boptions,
+                        aoptions,
+                    )
 
-                stderr_io = io.BytesIO()
+                    stderr_io = io.BytesIO()
 
-                self._source = SourcePlaybackCounter(
-                    PCMVolumeTransformer(
+                    source = PCMVolumeTransformer(
                         FFmpegPCMAudio(
                             audio_source,
                             before_options=boptions,
                             options=aoptions,
                             stderr=stderr_io,
-                            pipe=pipe,
                         ),
                         self.volume,
-                    ),
+                    )
+
+                self._source = SourcePlaybackCounter(
+                    source,
                     start_time=entry.start_time,
                     playback_speed=entry.playback_speed,
                 )
