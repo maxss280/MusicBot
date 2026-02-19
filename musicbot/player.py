@@ -576,6 +576,11 @@ class MusicPlayer(EventEmitter, Serializable):
                         log.error("Failed to reload opus: %s", e, exc_info=True)
                         raise RuntimeError("Opus library is not loaded") from e
 
+                if not self.voice_client.is_connected():
+                    log.warning("Voice client not connected, cannot play entry: %s", entry)
+                    self._playback_finished()
+                    return
+
                 self.voice_client.play(self._source, after=self._playback_finished)
 
                 self._current_player = self.voice_client
