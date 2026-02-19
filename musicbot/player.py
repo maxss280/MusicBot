@@ -30,6 +30,18 @@ EntryTypes = Union[URLPlaylistEntry, StreamPlaylistEntry, LocalFilePlaylistEntry
 
 log = logging.getLogger(__name__)
 
+try:
+    import numpy as np
+
+    USE_NUMPY = True
+except ImportError:
+    np = None
+    USE_NUMPY = False
+    log.warning(
+        "NumPy not installed. Volume processing will use slower Python loop. "
+        "Install with: pip install numpy"
+    )
+
 
 class InMemoryAudioSource(AudioSource):
     def __init__(
@@ -56,6 +68,11 @@ class InMemoryAudioSource(AudioSource):
         # Seek to start position if not at beginning
         if start_position > 0:
             self._data.seek(start_position)
+
+        if USE_NUMPY and self._size >= 3840:
+            self._numpy_array = np.frombuffer(self._data.getvalue(), dtype=np.int16)
+        else:
+            self._numpy_array = None
 
     @property
     def volume(self) -> float:
@@ -109,7 +126,30 @@ class InMemoryAudioSource(AudioSource):
         return self._size - self._position
 
     def _apply_volume(self, frame: bytes) -> bytes:
-        """Apply volume multiplier to PCM16 audio samples."""
+        """Apply volume multiplier to PCM16 audio samples using NumPy."""
+        if len(frame) % 2 != 0:
+            return frame
+
+        if USE_NUMPY and len(frame) >= 4:
+            try:
+                arr = np.frombuffer(frame, dtype=np.int16)
+
+                adjusted = arr * self._volume
+
+                adjusted = np.clip(adjusted, -32768, 32767)
+
+                return adjusted.astype(np.int16).tobytes()
+            except (ValueError, MemoryError) as e:
+                log.debug(
+                    "NumPy volume application failed (%s), falling back to Python loop",
+                    e,
+                )
+                return self._apply_volume_python_fallback(frame)
+        else:
+            return self._apply_volume_python_fallback(frame)
+
+    def _apply_volume_python_fallback(self, frame: bytes) -> bytes:
+        """Fallback Python implementation if NumPy unavailable or fails."""
         if len(frame) % 2 != 0:
             return frame
 
