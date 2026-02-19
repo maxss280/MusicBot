@@ -87,14 +87,15 @@ class AutoPlaylist(StrUserList):
         comment_char = "#"
 
         # Read in the file and add non-comments to the playlist.
-        playlist: List[str] = []
+        # Use dict to preserve order while removing duplicates (Python 3.7+)
+        playlist_dict = {}
         with open(self._file, "r", encoding="utf8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line or line.startswith(comment_char):
                     continue
-                playlist.append(line)
-        return playlist
+                playlist_dict[line] = None
+        return list(playlist_dict.keys())
 
     async def remove_track(
         self,

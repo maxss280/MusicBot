@@ -1347,9 +1347,14 @@ class MusicBot(discord.Client):
                     log.debug(
                         "No content in current autoplaylist. Filling with new music..."
                     )
-                    player.autoplaylist = list(
-                        self.server_data[player.voice_client.guild.id].autoplaylist
-                    )
+                    # Deduplicate autoplaylist while preserving order
+                    seen = set()
+                    deduped = []
+                    for url in self.server_data[player.voice_client.guild.id].autoplaylist:
+                        if url not in seen:
+                            seen.add(url)
+                            deduped.append(url)
+                    player.autoplaylist = deduped
 
             while player.autoplaylist:
                 log.everything(  # type: ignore[attr-defined]
@@ -1366,10 +1371,9 @@ class MusicBot(discord.Client):
 
                 if self.config.auto_playlist_random:
                     random.shuffle(player.autoplaylist)
-                    song_url = random.choice(player.autoplaylist)
+                    song_url = player.autoplaylist.pop(0)
                 else:
-                    song_url = player.autoplaylist[0]
-                player.autoplaylist.remove(song_url)
+                    song_url = player.autoplaylist.pop(0)
 
                 # Check if song is blocked.
                 if (
@@ -1438,7 +1442,14 @@ class MusicBot(discord.Client):
                     for entry in entries:
                         pl_urls.append(entry.url)
 
-                    player.autoplaylist = pl_urls + player.autoplaylist
+                    # Deduplicate playlist URLs while preserving order
+                    seen = set()
+                    deduped = []
+                    for url in pl_urls + player.autoplaylist:
+                        if url not in seen:
+                            seen.add(url)
+                            deduped.append(url)
+                    player.autoplaylist = deduped
                     continue
 
                 try:
@@ -2726,7 +2737,14 @@ class MusicBot(discord.Client):
 
         Resets all songs in the server's autoplaylist
         """
-        player.autoplaylist = list(self.server_data[guild.id].autoplaylist)
+        # Deduplicate while preserving order
+        seen = set()
+        deduped = []
+        for url in self.server_data[guild.id].autoplaylist:
+            if url not in seen:
+                seen.add(url)
+                deduped.append(url)
+        player.autoplaylist = deduped
         return Response(
             self.str.get("cmd-resetplaylist-response", "\N{OK HAND SIGN}"),
             delete_after=15,
@@ -3219,7 +3237,13 @@ class MusicBot(discord.Client):
 
             # Update the player copy if needed.
             if _player and self.config.auto_playlist:
-                _player.autoplaylist = list(pl)
+                seen = set()
+                deduped = []
+                for url in pl:
+                    if url not in seen:
+                        seen.add(url)
+                        deduped.append(url)
+                _player.autoplaylist = deduped
 
             new_msg = ""
             if not self.playlist_mgr.playlist_exists(opt_url):
