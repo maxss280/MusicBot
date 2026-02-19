@@ -103,7 +103,6 @@ class Downloader:
             ytdl_format_options["extractor_args"] = {
                 "youtube": {"player_client": ["android", "web"]}
             }
-            ytdl_format_options["format"] = "18/bestaudio/best"
 
         if bot.config.ytdlp_proxy:
             log.info("Yt-dlp will use your configured proxy server.")
@@ -501,6 +500,11 @@ class Downloader:
                     return data
 
         # Actually call YoutubeDL extract_info.
+        # Retry with format 18 fallback if cookies cause "format not available" error.
+        cookies_format_retry = False
+        if self.bot.config.cookies_path.is_file():
+            cookies_format_retry = True
+
         try:
             data = await asyncio.to_thread(
                 functools.partial(
@@ -508,26 +512,42 @@ class Downloader:
                 ),
             )
         except DownloadError as e:
-            if not as_stream_url:
+            # Retry with format 18 if cookies might be causing format issues
+            if cookies_format_retry and "Requested format is not available" in str(e):
+                log.warning(
+                    "Format error with cookies, retrying with format 18 fallback"
+                )
+                original_format = self.unsafe_ytdl.params.get("format")
+                self.unsafe_ytdl.params["format"] = "18"
+                try:
+                    data = await asyncio.to_thread(
+                        functools.partial(
+                            self.unsafe_ytdl.extract_info, song_subject, *args, **kwargs
+                        ),
+                    )
+                finally:
+                    if original_format:
+                        self.unsafe_ytdl.params["format"] = original_format
+                    elif "format" in self.unsafe_ytdl.params:
+                        del self.unsafe_ytdl.params["format"]
+            elif not as_stream_url:
                 raise ExtractionError(str(e)) from e
-
-            log.exception("Download Error with stream URL")
-            if e.exc_info[0] == UnsupportedError:
-                # ytdl doesn't support it but it could be stream-able...
-                song_url = self.get_url_or_none(song_subject)
-                if song_url:
-                    log.debug("Assuming content is a direct stream")
-                    data = {
-                        "title": song_subject,
-                        "extractor": None,
-                        "url": song_url,
-                        "__force_stream": True,
-                    }
-                else:
-                    raise ExtractionError("Cannot stream an invalid URL.") from e
-
             else:
-                raise ExtractionError(f"Invalid input: {str(e)}") from e
+                log.exception("Download Error with stream URL")
+                if e.exc_info[0] == UnsupportedError:
+                    song_url = self.get_url_or_none(song_subject)
+                    if song_url:
+                        log.debug("Assuming content is a stream")
+                        data = {
+                            "title": song_subject,
+                            "extractor": None,
+                            "url": song_url,
+                            "__force_stream": True,
+                        }
+                    else:
+                        raise ExtractionError("Cannot stream an invalid URL.") from e
+                else:
+                    raise ExtractionError(f"Invalid input: {str(e)}") from e
         except NoSupportingHandlers:
             # due to how we allow search service strings we can't just encode this by default.
             # on the other hand, this method prevents cmd_stream from taking search strings.
