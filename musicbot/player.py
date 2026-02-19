@@ -36,6 +36,7 @@ class InMemoryAudioSource(AudioSource):
         self,
         data: bytes,
         volume: float = 1.0,
+        start_position: int = 0,
     ) -> None:
         """
         Audio source that reads from in-memory PCM16 data.
@@ -45,12 +46,16 @@ class InMemoryAudioSource(AudioSource):
 
         :param data: Raw PCM16 audio data (48kHz, stereo, 16-bit)
         :param volume: Initial volume level (0.0 to 1.0)
+        :param start_position: Byte offset to start reading from (for resuming)
         """
         self._data = io.BytesIO(data)
         self._volume = volume
-        self._position = 0
+        self._position = start_position
         self._size = len(data)
         self._closed = False
+        # Seek to start position if not at beginning
+        if start_position > 0:
+            self._data.seek(start_position)
 
     @property
     def volume(self) -> float:
@@ -81,6 +86,27 @@ class InMemoryAudioSource(AudioSource):
             data = self._apply_volume(data)
 
         return data
+
+    def seek(self, position: int) -> bool:
+        """Seek to a specific byte position in the audio data.
+
+        :param position: Byte position to seek to
+        :returns: True if successful, False if position is out of bounds
+        """
+        if position < 0 or position > self._size:
+            return False
+        self._data.seek(position)
+        self._position = position
+        self._closed = False
+        return True
+
+    def get_position(self) -> int:
+        """Get the current read position in bytes."""
+        return self._position
+
+    def get_remaining_bytes(self) -> int:
+        """Get the number of remaining bytes to read."""
+        return self._size - self._position
 
     def _apply_volume(self, frame: bytes) -> bytes:
         """Apply volume multiplier to PCM16 audio samples."""
@@ -134,12 +160,14 @@ class SourcePlaybackCounter(AudioSource):
         source: PCMVolumeTransformer[FFmpegPCMAudio],
         start_time: float = 0,
         playback_speed: float = 1.0,
+        initial_position: int = 0,
     ) -> None:
         """
         Manage playback source and attempt to count progress frames used
         to measure playback progress.
 
         :param: start_time:  A time in seconds that was used in ffmpeg -ss flag.
+        :param: initial_position:  Initial byte position for in-memory sources (resume point)
         """
         # NOTE: PCMVolumeTransformer will let you set any crazy value.
         # But internally it limits between 0 and 2.0.
@@ -147,6 +175,7 @@ class SourcePlaybackCounter(AudioSource):
         self._num_reads: int = 0
         self._start_time: float = start_time
         self._playback_speed: float = playback_speed
+        self._initial_position: int = initial_position
 
     def read(self) -> bytes:
         res = self._source.read()
@@ -178,8 +207,14 @@ class SourcePlaybackCounter(AudioSource):
 
     @property
     def progress(self) -> float:
-        """Get an approximate playback progress time."""
-        return self._start_time + self.session_progress
+        """Get an approximate playback progress time including initial position."""
+        # For InMemoryAudioSource, calculate progress from bytes read
+        # Each frame is 3840 bytes = 0.02 seconds
+        return (
+            self._start_time
+            + (self._initial_position / 3840 * 0.02)
+            + self.session_progress
+        )
 
 
 class MusicPlayer(EventEmitter, Serializable):
@@ -303,6 +338,37 @@ class MusicPlayer(EventEmitter, Serializable):
 
         raise ValueError(f"Cannot resume playback from state {self.state}")
 
+    def update_voice_client(self, new_voice_client: VoiceClient) -> bool:
+        """
+        Update the voice client reference without killing audio source.
+        Used when reconnecting after voice disconnect.
+
+        :param new_voice_client: New VoiceClient to use for playback
+        :returns: True if successful, False if no current entry or source
+        """
+        if not self._current_entry:
+            log.warning("Cannot update voice client: no current entry")
+            return False
+
+        if not self._source:
+            log.warning("Cannot update voice client: no audio source")
+            return False
+
+        # Update voice client reference
+        old_voice = self.voice_client
+        self.voice_client = new_voice_client
+
+        # Update the current player reference
+        self._current_player = new_voice_client
+
+        log.debug(
+            "Updated voice client from %s to %s for entry: %s",
+            old_voice.channel.name if old_voice else "None",
+            new_voice_client.channel.name,
+            self._current_entry.title,
+        )
+        return True
+
     def pause(self) -> None:
         """
         Suspend player audio playback and emit an event, if the player was playing.
@@ -364,27 +430,54 @@ class MusicPlayer(EventEmitter, Serializable):
         elif self.loopqueue:
             self.playlist.entries.append(entry)
 
-        # TODO: investigate if this is cruft code or not.
-        if self._current_player:
-            if hasattr(self._current_player, "after"):
-                self._current_player.after = None
-            self._kill_current_player()
+        # Check if this was a voice disconnect error
+        is_disconnect_error = False
+        if error and hasattr(error, "args"):
+            error_str = str(error)
+            if "Not connected" in error_str or "voice" in error_str.lower():
+                is_disconnect_error = True
 
-        self._current_entry = None
-        self._source = None
-        self.stop()
-
-        # Release in-memory audio data if we had it
-        if entry.memory_data is not None:
-            entry_memory_size = entry.memory_size
-            entry.memory_data = None
-            entry.memory_size = 0
-            self.bot.filecache.release_memory(entry_memory_size)
-            log.debug(
-                "Released in-memory audio for: %s (%d bytes)",
+        # For disconnect errors, keep entry and memory for resume
+        # For normal completion, cleanup as usual
+        if is_disconnect_error:
+            # Kill audio source but keep entry and memory
+            if self._current_player:
+                if hasattr(self._current_player, "after"):
+                    self._current_player.after = None
+                self._kill_current_player()
+            self._source = None
+            # Don't set _current_entry = None or stop() - keep state for resume
+            log.info(
+                "Voice disconnect detected, keeping entry and memory for resume: %s",
                 entry.title,
-                entry_memory_size,
             )
+        else:
+            # TODO: investigate if this is cruft code or not.
+            if self._current_player:
+                if hasattr(self._current_player, "after"):
+                    self._current_player.after = None
+                self._kill_current_player()
+
+            self._current_entry = None
+            self._source = None
+            self.stop()
+
+            # Release in-memory audio data if we had it
+            if entry.memory_data is not None:
+                entry_memory_size = entry.memory_size
+                entry.memory_data = None
+                entry.memory_size = 0
+                self.bot.filecache.release_memory(entry_memory_size)
+                log.debug(
+                    "Released in-memory audio for: %s (%d bytes)",
+                    entry.title,
+                    entry_memory_size,
+                )
+
+        # if an error was set, report it and return...
+        if error:
+            self.emit("error", player=self, entry=entry, ex=error)
+            return
 
         # if an error was set, report it and return...
         if error:
@@ -510,17 +603,28 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 # Determine audio source: use in-memory if available and config is enabled
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
+                    # Calculate position to resume from (in bytes)
+                    # For 48kHz stereo 16-bit: 3840 bytes = 0.02 seconds (20ms frame)
+                    # Position in bytes = progress_seconds * 48000 * 2 * 2
+                    # Simplified: progress_seconds * 192000 = bytes
+                    progress_bytes = 0
+                    if hasattr(self, "progress"):
+                        progress_seconds = self.progress if self.progress else 0
+                        progress_bytes = int(progress_seconds * 192000)
+
                     # Use InMemoryAudioSource directly for in-memory audio
                     # This avoids FFmpeg and its stdin buffering issues
                     # Audio is already decoded to PCM16 with EQ applied during loading
                     source = InMemoryAudioSource(
                         entry.memory_data,
                         volume=self.volume,
+                        start_position=progress_bytes,
                     )
                     log.ffmpeg(  # type: ignore[attr-defined]
-                        "Using pure in-memory audio source for: %s (%d bytes)",
+                        "Using pure in-memory audio source for: %s (%d bytes, position=%d)",
                         entry.title,
                         len(entry.memory_data),
+                        progress_bytes,
                     )
                 else:
                     # Use FFmpeg with file path for disk-based audio

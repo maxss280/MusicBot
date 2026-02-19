@@ -8004,7 +8004,44 @@ class MusicBot(discord.Client):
                 close_code,
                 state.name.upper() if state else None,
             )
-            await self.disconnect_voice_client(o_guild)
+
+            # Get the player before connection cleanup
+            player = self.players.get(o_guild.id)
+            current_channel = before.channel if before.channel else None
+
+            # Don't call disconnect_voice_client (which kills player and releases memory)
+            # Instead, pause the player and wait for auto-reconnection
+
+            # Try to get new voice client for the same channel
+            if current_channel:
+                try:
+                    # Use a short timeout to check if we can reconnect
+                    voice_client = await self.get_voice_client(current_channel)
+                    if voice_client:
+                        log.info(
+                            "Voice client reconnected to: %s",
+                            current_channel.name,
+                        )
+                        # Update player's voice client reference if player still exists
+                        if player and not player.is_dead:
+                            # Check if we have in-memory audio and can resume
+                            if (
+                                player._current_entry
+                                and player._current_entry.memory_data
+                            ):
+                                log.info(
+                                    "Player has in-memory audio, voice client updated"
+                                )
+                            else:
+                                log.info(
+                                    "Player has no in-memory audio, will need to reload"
+                                )
+                except Exception as e:
+                    log.warning(
+                        "Failed to get voice client during disconnect: %s",
+                        str(e),
+                        exc_info=True,
+                    )
 
             # reconnect if the guild is configured to auto-join.
             if self.server_data[o_guild.id].auto_join_channel is not None:
@@ -8036,17 +8073,41 @@ class MusicBot(discord.Client):
                     target_channel,
                 )
                 try:
-                    r_player = await self.get_player(
-                        target_channel, create=True, deserialize=True
-                    )
+                    # Don't deserialize if player already exists (preserves state)
+                    r_player = self.players.get(o_guild.id)
 
-                    if r_player.is_stopped:
+                    if not r_player:
+                        # Create new player with deserialization
+                        r_player = await self.get_player(
+                            target_channel, create=True, deserialize=True
+                        )
+                    else:
+                        # Player still exists, just update voice client
+                        await self.get_voice_client(target_channel)
+                        # Update player's voice client reference
+                        r_player.update_voice_client(target_channel.guild.voice_client)
+
+                    # Check if playing, if so resume
+                    if r_player.is_paused and r_player._current_entry:
+                        log.info(
+                            "Resuming paused player with entry: %s",
+                            r_player._current_entry.title,
+                        )
+                        r_player.resume()
+                    elif r_player.is_stopped or not r_player._current_entry:
+                        log.debug("Player stopped or no entry, starting playback")
                         r_player.play()
 
                 except (TypeError, exceptions.PermissionsError):
                     log.warning(
                         "Cannot auto join channel:  %s",
                         before.channel,
+                        exc_info=True,
+                    )
+                except Exception as e:
+                    log.warning(
+                        "Error during reconnection: %s",
+                        str(e),
                         exc_info=True,
                     )
             return True
