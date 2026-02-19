@@ -22,9 +22,7 @@ from typing import (
 import configupdater
 
 from .constants import (
-    DATA_FILE_COOKIES,
     DATA_FILE_SERVERS,
-    DATA_FILE_YTDLP_OAUTH2,
     DEFAULT_AUDIO_CACHE_DIR,
     DEFAULT_DATA_DIR,
     DEFAULT_FOOTER_TEXT,
@@ -732,58 +730,6 @@ class Config:
                 "Leave blank to use default, dynamically generated UA strings."
             ),
         )
-        self.ytdlp_use_oauth2: bool = self.register.init_option(
-            section="MusicBot",
-            option="YtdlpUseOAuth2",
-            dest="ytdlp_use_oauth2",
-            default=ConfigDefaults.ytdlp_use_oauth2,
-            getter="getboolean",
-            comment=(
-                "Experimental option to enable yt-dlp to use a YouTube account via OAuth2.\n"
-                "When enabled, you must use the generated URL and code to authorize an account.\n"
-                "The authorization token is then stored in the "
-                f"`{DEFAULT_DATA_DIR}/{DATA_FILE_YTDLP_OAUTH2}` file.\n"
-                "This option should not be used when cookies are enabled.\n"
-                "Using a personal account may not be recommended.\n"
-                "Set yes to enable or no to disable."
-            ),
-        )
-        self.ytdlp_oauth2_client_id: str = self.register.init_option(
-            section="Credentials",
-            option="YtdlpOAuth2ClientID",
-            dest="ytdlp_oauth2_client_id",
-            getter="getstr",
-            default=ConfigDefaults.ytdlp_oauth2_client_id,
-            comment=(
-                "Sets the YouTube API Client ID, used by Yt-dlp OAuth2 plugin.\n"
-                "Optional, unless built-in credentials are not working."
-            ),
-        )
-        self.ytdlp_oauth2_client_secret: str = self.register.init_option(
-            section="Credentials",
-            option="YtdlpOAuth2ClientSecret",
-            dest="ytdlp_oauth2_client_secret",
-            getter="getstr",
-            default=ConfigDefaults.ytdlp_oauth2_client_secret,
-            comment=(
-                "Sets the YouTube API Client Secret key, used by Yt-dlp OAuth2 plugin.\n"
-                "Optional, unless YtdlpOAuth2ClientID is set."
-            ),
-        )
-        self.ytdlp_oauth2_url: str = self.register.init_option(
-            section="MusicBot",
-            option="YtdlpOAuth2URL",
-            dest="ytdlp_oauth2_url",
-            getter="getstr",
-            default=ConfigDefaults.ytdlp_oauth2_url,
-            comment=(
-                "Optional youtube video URL used at start-up for triggering OAuth2 authorization.\n"
-                "This starts the OAuth2 prompt early, rather than waiting for a song request.\n"
-                "The URL set here should be an accessible youtube video URL.\n"
-                "Authorization must be completed before start-up will continue when this is set."
-            ),
-        )
-
         self.user_blocklist_enabled: bool = self.register.init_option(
             section="MusicBot",
             option="EnableUserBlocklist",
@@ -900,10 +846,6 @@ class Config:
         # Convert all path constants into config as pathlib.Path objects.
         self.data_path = pathlib.Path(DEFAULT_DATA_DIR).resolve()
         self.server_names_path = self.data_path.joinpath(DATA_FILE_SERVERS)
-        self.cookies_path = self.data_path.joinpath(DATA_FILE_COOKIES)
-        self.disabled_cookies_path = self.cookies_path.parent.joinpath(
-            f"_{self.cookies_path.name}"
-        )
 
         # Validate the config settings match destination values.
         self.register.validate_register_destinations()
@@ -1041,17 +983,6 @@ class Config:
 
         if self.enable_local_media and not self.media_file_dir.is_dir():
             self.media_file_dir.mkdir(exist_ok=True)
-
-        if self.cookies_path.is_file():
-            log.warning(
-                "Cookies TXT file detected. MusicBot will pass them to yt-dlp.\n"
-                "Cookies are not recommended, may not be supported, and may totally break.\n"
-                "Copying cookies from your web-browser risks exposing personal data and \n"
-                "in the best case can result in your accounts being banned!\n\n"
-                "You have been warned!  Good Luck!  \U0001f596\n"
-            )
-            # make sure the user sees this.
-            time.sleep(3)
 
     async def async_validate(self, bot: "MusicBot") -> None:
         """
@@ -1313,17 +1244,7 @@ class ConfigDefaults:
     auto_unpause_on_play: bool = False
     ytdlp_proxy: str = ""
     ytdlp_user_agent: str = ""
-    ytdlp_oauth2_url: str = ""
-    # These client details are taken from the original plugin code.
-    # Likely that they wont work forever, should be removed, but testing for now.
-    # PR #21 to get these from YT-TV seems broken already.  Maybe I am stupid.
-    # TODO: remove these when a working method to reliably extract them is available.
-    ytdlp_oauth2_client_id: str = (
-        "861556708454-d6dlm3lh05idd8npek18k6be8ba3oc68.apps.googleusercontent.com"
-    )
-    ytdlp_oauth2_client_secret: str = "SboVhoG9s0rNafixCSGGKXAT"
 
-    ytdlp_use_oauth2: bool = False
     pre_download_next_song: bool = True
 
     song_blocklist: Set[str] = set()

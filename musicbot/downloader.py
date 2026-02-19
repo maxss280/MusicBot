@@ -24,7 +24,6 @@ from yt_dlp.utils import UnsupportedError
 from .constants import DEFAULT_MAX_INFO_REQUEST_TIMEOUT
 from .exceptions import ExtractionError, MusicbotException
 from .spotify import Spotify
-from .ytdlp_oauth2_plugin import enable_ytdlp_oauth2_plugin
 
 if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
@@ -93,51 +92,9 @@ class Downloader:
         ytdl_format_options = ytdl_format_options_immutable.copy()
         ytdl_format_options["http_headers"] = self.http_req_headers
 
-        # check if we should apply a cookies file to ytdlp.
-        if bot.config.cookies_path.is_file():
-            log.info(
-                "MusicBot will use cookies for yt-dlp from:  %s",
-                bot.config.cookies_path,
-            )
-            ytdl_format_options["cookiefile"] = bot.config.cookies_path
-            ytdl_format_options["extractor_args"] = {
-                "youtube": {"player_client": ["android", "web"]}
-            }
-
         if bot.config.ytdlp_proxy:
             log.info("Yt-dlp will use your configured proxy server.")
             ytdl_format_options["proxy"] = bot.config.ytdlp_proxy
-
-        if bot.config.ytdlp_use_oauth2:
-            # set the login info so oauth2 is prompted.
-            ytdl_format_options["username"] = "oauth2"
-            ytdl_format_options["password"] = ""
-            # ytdl_format_options["extractor_args"] = {
-            #    "youtubetab": {"skip": ["authcheck"]}
-            # }
-
-            # check if the original plugin is installed, and use it instead of ours.
-            # It's worth doing this because our version might fail to work,
-            # even if the original causes infinite loop hangs while auth is pending...
-            try:
-                oauth_spec = importlib.util.find_spec(
-                    "yt_dlp_plugins.extractor.youtubeoauth"
-                )
-            except ModuleNotFoundError:
-                oauth_spec = None
-
-            if oauth_spec is not None:
-                log.warning(
-                    "Original OAuth2 plugin is installed and will be used instead.\n"
-                    "This may cause MusicBot to not close completely, or hang pending authorization!\n"
-                    "To close MusicBot, you must manually Kill the MusicBot process!\n"
-                    "Yt-dlp is being set to show warnings and other log messages, to show the Auth code.\n"
-                    "Uninstall the yt-dlp-youtube-oauth2 package to use integrated OAuth2 features instead."
-                )
-                ytdl_format_options["quiet"] = False
-                ytdl_format_options["no_warnings"] = False
-            else:
-                enable_ytdlp_oauth2_plugin(self.bot.config)
 
         if self.download_folder:
             # print("setting template to " + os.path.join(download_folder, otmpl))
@@ -155,29 +112,6 @@ class Downloader:
     def ytdl(self) -> youtube_dl.YoutubeDL:
         """Get the Safe (errors ignored) instance of YoutubeDL."""
         return self.safe_ytdl
-
-    @property
-    def cookies_enabled(self) -> bool:
-        """
-        Get status of cookiefile option in ytdlp objects.
-        """
-        return all(
-            "cookiefile" in ytdl.params for ytdl in [self.safe_ytdl, self.unsafe_ytdl]
-        )
-
-    def enable_ytdl_cookies(self) -> None:
-        """
-        Set the cookiefile option on the ytdl objects.
-        """
-        self.safe_ytdl.params["cookiefile"] = self.bot.config.cookies_path
-        self.unsafe_ytdl.params["cookiefile"] = self.bot.config.cookies_path
-
-    def disable_ytdl_cookies(self) -> None:
-        """
-        Remove the cookiefile option on the ytdl objects.
-        """
-        del self.safe_ytdl.params["cookiefile"]
-        del self.unsafe_ytdl.params["cookiefile"]
 
     def randomize_user_agent_string(self) -> None:
         """Randomize the User-Agent string for both yt‑dl instances."""
@@ -500,11 +434,6 @@ class Downloader:
                     return data
 
         # Actually call YoutubeDL extract_info.
-        # Retry with format 18 fallback if cookies cause "format not available" error.
-        cookies_format_retry = False
-        if self.bot.config.cookies_path.is_file():
-            cookies_format_retry = True
-
         try:
             data = await asyncio.to_thread(
                 functools.partial(
@@ -512,42 +441,24 @@ class Downloader:
                 ),
             )
         except DownloadError as e:
-            # Retry with format 18 if cookies might be causing format issues
-            if cookies_format_retry and "Requested format is not available" in str(e):
-                log.warning(
-                    "Format error with cookies, retrying with format 18 fallback"
-                )
-                original_format = self.unsafe_ytdl.params.get("format")
-                self.unsafe_ytdl.params["format"] = "18"
-                try:
-                    data = await asyncio.to_thread(
-                        functools.partial(
-                            self.unsafe_ytdl.extract_info, song_subject, *args, **kwargs
-                        ),
-                    )
-                finally:
-                    if original_format:
-                        self.unsafe_ytdl.params["format"] = original_format
-                    elif "format" in self.unsafe_ytdl.params:
-                        del self.unsafe_ytdl.params["format"]
-            elif not as_stream_url:
+            if not as_stream_url:
                 raise ExtractionError(str(e)) from e
-            else:
-                log.exception("Download Error with stream URL")
-                if e.exc_info[0] == UnsupportedError:
-                    song_url = self.get_url_or_none(song_subject)
-                    if song_url:
-                        log.debug("Assuming content is a stream")
-                        data = {
-                            "title": song_subject,
-                            "extractor": None,
-                            "url": song_url,
-                            "__force_stream": True,
-                        }
-                    else:
-                        raise ExtractionError("Cannot stream an invalid URL.") from e
+
+            log.exception("Download Error with stream URL")
+            if e.exc_info[0] == UnsupportedError:
+                song_url = self.get_url_or_none(song_subject)
+                if song_url:
+                    log.debug("Assuming content is a stream")
+                    data = {
+                        "title": song_subject,
+                        "extractor": None,
+                        "url": song_url,
+                        "__force_stream": True,
+                    }
                 else:
-                    raise ExtractionError(f"Invalid input: {str(e)}") from e
+                    raise ExtractionError("Cannot stream an invalid URL.") from e
+            else:
+                raise ExtractionError(f"Invalid input: {str(e)}") from e
         except NoSupportingHandlers:
             # due to how we allow search service strings we can't just encode this by default.
             # on the other hand, this method prevents cmd_stream from taking search strings.
