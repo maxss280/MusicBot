@@ -36,6 +36,7 @@ class AudioFileCache:
 
         self.size_bytes: int = 0
         self.file_count: int = 0
+        self.memory_usage_bytes: int = 0
 
         # Stores filenames without extension associated to a playlist URL.
         self.auto_playlist_cachemap: Dict[str, str] = {}
@@ -485,3 +486,47 @@ class AudioFileCache:
                 return True
 
         return False
+
+    def get_memory_usage_mb(self) -> float:
+        """Get current memory usage in MB."""
+        return self.memory_usage_bytes / (1024 * 1024)
+
+    def get_memory_limit_bytes(self) -> int:
+        """Get memory limit in bytes from config."""
+        if self.config.max_memory_usage_mb <= 0:
+            return 0
+        return self.config.max_memory_usage_mb * 1024 * 1024
+
+    def has_memory_capacity(self, additional_bytes: int) -> bool:
+        """Check if we have capacity for additional bytes of memory."""
+        if self.config.max_memory_usage_mb <= 0:
+            return True
+        return (
+            self.memory_usage_bytes + additional_bytes
+        ) <= self.get_memory_limit_bytes()
+
+    def allocate_memory(self, size: int) -> bool:
+        """Allocate memory for an entry, returns True if successful."""
+        if not self.has_memory_capacity(size):
+            log.debug(
+                "Memory limit reached: %d MB, cannot allocate %d bytes",
+                self.get_memory_usage_mb(),
+                size,
+            )
+            return False
+        self.memory_usage_bytes += size
+        log.debug(
+            "Memory allocated: %d bytes, total: %d MB",
+            size,
+            self.get_memory_usage_mb(),
+        )
+        return True
+
+    def release_memory(self, size: int) -> None:
+        """Release memory from an entry."""
+        self.memory_usage_bytes = max(0, self.memory_usage_bytes - size)
+        log.debug(
+            "Memory released: %d bytes, total: %d MB",
+            size,
+            self.get_memory_usage_mb(),
+        )

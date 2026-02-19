@@ -16,12 +16,12 @@ def load_opus_lib() -> None:
         return
 
     log.info("Attempting to load opus library...")
-    
+
     # Try default loading first
     try:
         opus._load_default()  # pylint: disable=protected-access
         if opus.is_loaded():
-            lib_info = getattr(opus, '_lib', 'UNKNOWN')
+            lib_info = getattr(opus, "_lib", "UNKNOWN")
             log.info("Opus library loaded successfully: %s", lib_info)
             return
     except OSError as e:
@@ -36,7 +36,7 @@ def load_opus_lib() -> None:
         "/usr/local/lib/libopus.so.0",
         "/usr/local/lib/libopus.so",
     ]
-    
+
     for lib_path in alpine_paths:
         try:
             log.info("Trying to load opus from: %s", lib_path)

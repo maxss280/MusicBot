@@ -32,3 +32,4 @@ agents_playground/
 agents_playground/*
 .agents_playground/
 .agents_playground/*
+.venv/

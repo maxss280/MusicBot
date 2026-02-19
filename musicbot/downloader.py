@@ -307,7 +307,7 @@ class Downloader:
             song_subject_hash = md5.hexdigest()[-8:]
 
         # If this is a YouTube URL and we already have the file cached, we can skip the entire yt‑dl extraction.
-        if ("youtube.com" in song_subject.lower() or "youtu.be" in song_subject.lower()):
+        if "youtube.com" in song_subject.lower() or "youtu.be" in song_subject.lower():
             # Attempt to extract the video ID from the URL.
             video_id_match = re.search(r"(?:v=|/)([A-Za-z0-9_-]{11})", song_subject)
             if video_id_match:

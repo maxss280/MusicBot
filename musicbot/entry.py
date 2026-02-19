@@ -54,6 +54,8 @@ class BasePlaylistEntry(Serializable):
         """
         self.filename: str = ""
         self.downloaded_bytes: int = 0
+        self.memory_data: Optional[bytes] = None
+        self.memory_size: int = 0
         self.cache_busted: bool = False
         self._is_downloading: bool = False
         self._is_downloaded: bool = False
@@ -494,9 +496,52 @@ class URLPlaylistEntry(BasePlaylistEntry):
                             )
                             await self._really_download()
                         else:
-                            log.debug("Download already cached at:  %s", file_cache_path)
+                            log.debug(
+                                "Download already cached at:  %s", file_cache_path
+                            )
                             self.filename = file_cache_path
                             self._is_downloaded = True
+
+                        # Load cached file into memory if config is enabled
+                        if (
+                            self.playlist.bot.config.load_audio_into_memory
+                            and not self.memory_data
+                        ):
+                            if not self.playlist.bot.filecache.has_memory_capacity(
+                                os.path.getsize(self.filename)
+                            ):
+                                log.debug(
+                                    "Memory limit reached, skipping in-memory load for cached file: %s",
+                                    self.title,
+                                )
+                            else:
+                                try:
+                                    log.debug(
+                                        "Loading cached audio into memory: %s",
+                                        self.title,
+                                    )
+                                    with open(self.filename, "rb") as f:
+                                        self.memory_data = f.read()
+                                        self.memory_size = len(self.memory_data)
+
+                                    if self.playlist.bot.filecache.allocate_memory(
+                                        self.memory_size
+                                    ):
+                                        log.debug(
+                                            "Successfully loaded cached file into memory: %d bytes",
+                                            self.memory_size,
+                                        )
+                                    else:
+                                        self.memory_data = None
+                                        self.memory_size = 0
+                                except Exception as e:
+                                    log.error(
+                                        "Failed to load cached audio into memory: %s, error: %s",
+                                        self.title,
+                                        str(e),
+                                    )
+                                    self.memory_data = None
+                                    self.memory_size = 0
 
                 # nothing cached, time to download for real.
                 else:
@@ -742,6 +787,44 @@ class URLPlaylistEntry(BasePlaylistEntry):
         # This should also leave self.downloaded_bytes set to 0 if the file is in cache already.
         self.downloaded_bytes = os.path.getsize(self.filename)
 
+        # Load audio into memory if config is enabled and memory capacity available
+        if self.playlist.bot.config.load_audio_into_memory:
+            if not self.playlist.bot.filecache.has_memory_capacity(
+                self.downloaded_bytes
+            ):
+                log.info(
+                    "Memory limit reached, skipping in-memory load for: %s",
+                    self.title,
+                )
+            else:
+                try:
+                    log.debug("Loading audio into memory: %s", self.title)
+                    with open(self.filename, "rb") as f:
+                        self.memory_data = f.read()
+                        self.memory_size = len(self.memory_data)
+
+                    if self.playlist.bot.filecache.allocate_memory(self.memory_size):
+                        log.debug(
+                            "Successfully loaded into memory: %d bytes",
+                            self.memory_size,
+                        )
+                    else:
+                        # Release the memory we tried to allocate
+                        self.memory_data = None
+                        self.memory_size = 0
+                        log.debug(
+                            "Memory allocation failed after reading: %d bytes",
+                            self.downloaded_bytes,
+                        )
+                except Exception as e:
+                    log.error(
+                        "Failed to load audio into memory: %s, error: %s",
+                        self.title,
+                        str(e),
+                    )
+                    self.memory_data = None
+                    self.memory_size = 0
+
 
 class StreamPlaylistEntry(BasePlaylistEntry):
     SERIAL_VERSION: int = 3
@@ -916,6 +999,9 @@ class StreamPlaylistEntry(BasePlaylistEntry):
 
             entry = cls(playlist, info, author=author, channel=channel)
             entry.filename = filename
+            # Stream entries don't load into memory - they're actual streams
+            entry.memory_data = None
+            entry.memory_size = 0
             return entry
         except (ValueError, KeyError, TypeError) as e:
             log.error("Could not load %s", cls.__name__, exc_info=e)
@@ -1216,6 +1302,42 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
             # Trigger ready callbacks.
             self._is_downloaded = True
+
+            # Load local file into memory if config is enabled
+            if self.playlist.bot.config.load_audio_into_memory and not self.memory_data:
+                if not self.playlist.bot.filecache.has_memory_capacity(
+                    os.path.getsize(self.filename)
+                ):
+                    log.debug(
+                        "Memory limit reached, skipping in-memory load for local file: %s",
+                        self.title,
+                    )
+                else:
+                    try:
+                        log.debug("Loading local file into memory: %s", self.title)
+                        with open(self.filename, "rb") as f:
+                            self.memory_data = f.read()
+                            self.memory_size = len(self.memory_data)
+
+                        if self.playlist.bot.filecache.allocate_memory(
+                            self.memory_size
+                        ):
+                            log.debug(
+                                "Successfully loaded local file into memory: %d bytes",
+                                self.memory_size,
+                            )
+                        else:
+                            self.memory_data = None
+                            self.memory_size = 0
+                    except Exception as e:
+                        log.error(
+                            "Failed to load local file into memory: %s, error: %s",
+                            self.title,
+                            str(e),
+                        )
+                        self.memory_data = None
+                        self.memory_size = 0
+
             self._for_each_future(lambda future: future.set_result(self))
 
         # Flake8 thinks 'e' is never used, and later undefined. Maybe the lambda is too much.

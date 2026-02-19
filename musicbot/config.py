@@ -449,6 +449,30 @@ class Config:
                 "Currently this option does not apply to auto-playlist or songs added to an empty queue."
             ),
         )
+        self.load_audio_into_memory: bool = self.register.init_option(
+            section="MusicBot",
+            option="LoadAudioIntoMemory",
+            dest="load_audio_into_memory",
+            default=ConfigDefaults.load_audio_into_memory,
+            getter="getboolean",
+            comment=(
+                "Load entire songs into memory before playback to prevent stuttering.\n"
+                "This uses more RAM but eliminates network/disk I/O during playback.\n"
+                "If enabled, max_memory_usage_mb setting will apply."
+            ),
+        )
+        self.max_memory_usage_mb: int = self.register.init_option(
+            section="MusicBot",
+            option="MaxMemoryUsageMB",
+            dest="max_memory_usage_mb",
+            default=ConfigDefaults.max_memory_usage_mb,
+            getter="getint",
+            comment=(
+                "Maximum memory in MB to use for in-memory audio storage.\n"
+                "When limit is reached, songs will be played from disk instead.\n"
+                "Set to 0 for no limit (not recommended)."
+            ),
+        )
         self.status_message: str = self.register.init_option(
             section="MusicBot",
             option="StatusMessage",
@@ -1246,6 +1270,8 @@ class ConfigDefaults:
     ytdlp_user_agent: str = ""
 
     pre_download_next_song: bool = True
+    load_audio_into_memory: bool = False
+    max_memory_usage_mb: int = 500
 
     song_blocklist: Set[str] = set()
     user_blocklist: Set[int] = set()

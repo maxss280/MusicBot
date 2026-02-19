@@ -10,8 +10,7 @@ try:
     # Get the last release tag, number of commits since, and g{commit_id} as string.
     _VERSION_P1 = (
         subprocess.check_output(
-            ["git", "describe", "--tags", "--always"],
-            stderr=subprocess.DEVNULL
+            ["git", "describe", "--tags", "--always"], stderr=subprocess.DEVNULL
         )
         .decode("ascii")
         .strip()
@@ -19,8 +18,7 @@ try:
     # Check if any tracked files are modified for -modded version flag.
     _VERSION_P2 = (
         subprocess.check_output(
-            ["git", "status", "-suno", "--porcelain"],
-            stderr=subprocess.DEVNULL
+            ["git", "status", "-suno", "--porcelain"], stderr=subprocess.DEVNULL
         )
         .decode("ascii")
         .strip()

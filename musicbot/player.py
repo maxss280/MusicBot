@@ -31,6 +31,53 @@ EntryTypes = Union[URLPlaylistEntry, StreamPlaylistEntry, LocalFilePlaylistEntry
 log = logging.getLogger(__name__)
 
 
+class InMemoryAudioSource(AudioSource):
+    def __init__(
+        self,
+        data: bytes,
+        volume: float = 1.0,
+    ) -> None:
+        """
+        Audio source that reads from in-memory data instead of a file.
+        Designed to work with FFmpegPCMAudio by providing a file-like BytesIO interface.
+
+        :param data: Audio data in bytes
+        :param volume: Initial volume level (0.0 to 1.0)
+        """
+        self._data = io.BytesIO(data)
+        self._volume = volume
+        self._position = 0
+        self._size = len(data)
+        self._closed = False
+
+    def read(self) -> bytes:
+        """Read 20ms of audio data (960 bytes for 48kHz stereo)."""
+        if self._closed:
+            return b""
+
+        # Discord's audio system expects 20ms frames
+        # For 48kHz stereo 16-bit, that's 960 bytes per frame
+        frame_size = 960
+        data = self._data.read(frame_size)
+
+        if not data:
+            self._closed = True
+            return b""
+
+        return data
+
+    def cleanup(self) -> None:
+        """Cleanup the source and release resources."""
+        try:
+            log.noise(  # type: ignore[attr-defined]
+                "Cleanup got called on in-memory audio source: %r", self
+            )
+        except Exception:
+            pass
+        self._closed = True
+        self._data.close()
+
+
 class MusicPlayerState(Enum):
     STOPPED = 0  # When the player isn't playing anything
     PLAYING = 1  # The player is actively playing music.
@@ -290,6 +337,18 @@ class MusicPlayer(EventEmitter, Serializable):
         self._source = None
         self.stop()
 
+        # Release in-memory audio data if we had it
+        if entry.memory_data is not None:
+            entry_memory_size = entry.memory_size
+            entry.memory_data = None
+            entry.memory_size = 0
+            self.bot.filecache.release_memory(entry_memory_size)
+            log.debug(
+                "Released in-memory audio for: %s (%d bytes)",
+                entry.title,
+                entry_memory_size,
+            )
+
         # if an error was set, report it and return...
         if error:
             self.emit("error", player=self, entry=entry, ex=error)
@@ -409,11 +468,26 @@ class MusicPlayer(EventEmitter, Serializable):
                 else:
                     aoptions = "-vn"
 
+                # Determine audio source: use in-memory if available and config is enabled
+                audio_source: Union[str, io.BytesIO]
+                if self.bot.config.load_audio_into_memory and entry.memory_data:
+                    audio_source = io.BytesIO(entry.memory_data)
+                    log.ffmpeg(  # type: ignore[attr-defined]
+                        "Using in-memory audio source for: %s (%d bytes)",
+                        entry.title,
+                        len(entry.memory_data),
+                    )
+                else:
+                    audio_source = entry.filename
+                    log.ffmpeg(  # type: ignore[attr-defined]
+                        "Using file-based audio source: %s",
+                        entry.filename,
+                    )
+
                 log.ffmpeg(  # type: ignore[attr-defined]
-                    "Creating player with options: %s %s %s",
+                    "Creating player with options: %s %s",
                     boptions,
                     aoptions,
-                    entry.filename,
                 )
 
                 stderr_io = io.BytesIO()
@@ -421,7 +495,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 self._source = SourcePlaybackCounter(
                     PCMVolumeTransformer(
                         FFmpegPCMAudio(
-                            entry.filename,
+                            audio_source,
                             before_options=boptions,
                             options=aoptions,
                             stderr=stderr_io,
@@ -434,23 +508,26 @@ class MusicPlayer(EventEmitter, Serializable):
                 log.voicedebug(  # type: ignore[attr-defined]
                     "Playing %r using %r", self._source, self.voice_client
                 )
-                
+
                 # Verify opus is loaded before attempting playback
                 if not opus.is_loaded():
                     log.error("Opus library not loaded! Attempting reload...")
                     # Try to reload using opus_loader
                     try:
                         from .opus_loader import load_opus_lib
+
                         load_opus_lib()
                         if opus.is_loaded():
                             log.info("Opus library successfully reloaded")
                         else:
                             log.error("Opus reload failed")
-                            raise RuntimeError("Opus library is not loaded after reload attempt")
+                            raise RuntimeError(
+                                "Opus library is not loaded after reload attempt"
+                            )
                     except Exception as e:
                         log.error("Failed to reload opus: %s", e, exc_info=True)
                         raise RuntimeError("Opus library is not loaded") from e
-                
+
                 self.voice_client.play(self._source, after=self._playback_finished)
 
                 self._current_player = self.voice_client
