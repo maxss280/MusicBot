@@ -577,7 +577,9 @@ class MusicPlayer(EventEmitter, Serializable):
                         raise RuntimeError("Opus library is not loaded") from e
 
                 if not self.voice_client.is_connected():
-                    log.warning("Voice client not connected, cannot play entry: %s", entry)
+                    log.warning(
+                        "Voice client not connected, cannot play entry: %s", entry
+                    )
                     self._playback_finished()
                     return
 
