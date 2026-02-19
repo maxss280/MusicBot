@@ -8,6 +8,7 @@
 - **Project Root**: `/workspace`
 - **Core Module**: `musicbot/` contains all bot logic
 - **Test Framework**: No automated tests; manual testing via Discord commands
+- **Branching**: All changes push directly to `review` branch, then to `master` when tested
 
 ## Changelog
 
@@ -252,63 +253,49 @@ git push maxss280 <branch>
 
 ### Git Branches
 - **`master`**: Active development branch - may be unstable, breaking changes accepted
-- **`Stable-1.0.0`**: First stable release branch - for production use, **NEVER push features or major changes here**
-- **`review`**: Testing branch for new features and fixes before merging to master
-- **Feature branches**: `feature/your-feature` - create from review (not master)
+- **`Stable-1.0.0`**: First stable release branch - for production use, only critical patches
+- **`review`**: Testing branch for all changes before merging to master
 
 ### Common Git Workflow
 ```bash
-# 1. Create branch from review (not master)
-git checkout review
-git pull maxss280 review
-git checkout -b feature/your-feature
-
-# 2. Configure commit author (run once per session)
+# 1. Configure commit author (run once per session)
 git config user.name "Maxss280"
 git config user.email "17280185+maxss280@users.noreply.github.com"
 
-# 3. Make changes, commit with clear messages
-git add .
-git commit -m "feat: Add new command to play next"
+# 2. Update review branch and create working branch from it
+git checkout review
+git pull maxss280 review
 
-# 3. Test locally
+# 3. Make changes and commit directly to review (no feature branches needed)
+git add .
+git commit -m "fix: Add voice connection check before playback"
+
+# 4. Test locally
 python run.py --no-checks  # Skip optional checks
 # Test commands in Discord
 
-# 4. Format and lint before pushing
+# 5. Format and lint before pushing
 black musicbot/
 flake8 musicbot/
 
-# 5. Push and create PR targeting review branch
-git push maxss280 feature/your-feature
+# 6. Push directly to review branch
+git push maxss280 review
 ```
 
 ### Branch Operations
 
 **Branching Strategy for Releases:**
-    - **New features/fixes**: Always create from `review` branch (NOT master)
-    - **Testing**: All changes go to `review` first for testing
-    - **Master**: Merge stable changes from review when ready
-    - **Stable-1.0.0**: Only for critical patch fixes - NEVER for features or major changes
-
-**Example workflow for bug fix:**
-1. Create branch: `git checkout -b feature/fix-xyz`
-2. Make changes, test locally
-3. Commit: `git commit -m "fix: Describe the fix"`
-4. Push: `git push maxss280 feature/fix-xyz`
-5. Create PR targeting `review` branch
-6. Test on `review` branch
-7. Once stable-ish, merge to `master`
-8. Only critical patches go to `Stable-1.0.0`
+- **Review**: Test all fixes and features here before merging to master
+- **Master**: Merge stable changes from review
+- **Stable-1.0.0**: Only critical patches - NEVER features or major changes
 
 **Pushing workflow:**
-1. **Create branch from review**: `git checkout -b feature/your-feature`
-2. **Work on changes**: Implement and test locally
-3. **Push feature branch**: `git push maxss280 feature/your-feature`
-4. **Create PR**: Target `review` branch (NOT master or Stable-1.0.0)
-5. **Testing**: All changes tested on review branch
-6. **Merge to master**: Only after successful testing on review
-7. **Stable patches ONLY**: Critical fixes may goes to Stable-1.0.0 directly from master
+1. Update review: `git checkout review && git pull maxss280 review`
+2. Make changes and commit directly to review
+3. Push to review: `git push maxss280 review`
+4. Test on review branch
+5. When stable-ish, merge review to master
+6. Only critical patches go to Stable-1.0.0 directly from master
 
 **Create and push stable branch:**
 ```bash
