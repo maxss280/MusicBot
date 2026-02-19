@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import math
 import os
 import re
 import shutil
@@ -190,6 +191,88 @@ async def run_command(command: List[str]) -> bytes:
     )
     stdout, stderr = await p.communicate()
     return stdout + stderr
+
+
+async def decode_to_pcm16(
+    input_file: str, loudnorm_gain: float = 1.0
+) -> Optional[bytes]:
+    """
+    Decode compressed audio (MP3, M4A, etc.) to raw PCM16 (S16LE) format.
+
+    Discord requires 16-bit 48kHz stereo PCM for non-Opus audio sources.
+    This function uses FFmpeg to decode the audio and optionally applies
+    loudnorm equalization during the decode process.
+
+    :param input_file: Path to the compressed audio file
+    :param loudnorm_gain: Linear gain multiplier (1.0 = no change)
+        If != 1.0, loudnorm filter is applied during decode
+    :returns: Raw PCM16 bytes or None if decoding fails
+
+    Output format: 48kHz, stereo, 16-bit signed little-endian PCM
+    """
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if not ffmpeg_bin:
+        log.error("Could not locate ffmpeg on your path!")
+        return None
+
+    # Base FFmpeg command for PCM16 output
+    ffmpeg_cmd = [
+        ffmpeg_bin,
+        "-i",
+        input_file,
+        "-ar",
+        "48000",  # Sample rate: 48kHz (Discord requirement)
+        "-ac",
+        "2",  # Channels: stereo
+        "-f",
+        "s16le",  # Format: 16-bit signed little-endian PCM
+    ]
+
+    # Add loudnorm filter if EQ is enabled
+    if loudnorm_gain != 1.0:
+        # Convert linear gain back to dB offset for loudnorm
+        offset_db = 20 * math.log10(loudnorm_gain)
+        loudnorm_filter = (
+            f"loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:offset={offset_db:.2f}"
+        )
+        ffmpeg_cmd.extend(["-af", loudnorm_filter])
+        log.debug(
+            "Decoding with loudnorm EQ: gain=%.4f, offset=%.2f dB",
+            loudnorm_gain,
+            offset_db,
+        )
+    else:
+        log.debug("Decoding without EQ (gain=1.0)")
+
+    # Output to stdout
+    ffmpeg_cmd.append("pipe:1")
+
+    try:
+        p = await asyncio.create_subprocess_exec(
+            *ffmpeg_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await p.communicate()
+
+        if p.returncode != 0:
+            log.error(
+                "FFmpeg decode failed with code %d: %s",
+                p.returncode,
+                stderr.decode("utf-8"),
+            )
+            return None
+
+        if not stdout:
+            log.error("FFmpeg produced no output for: %s", input_file)
+            return None
+
+        log.debug("Successfully decoded %s to PCM16: %d bytes", input_file, len(stdout))
+        return stdout
+
+    except Exception as e:
+        log.error("Failed to decode audio to PCM16: %s", e, exc_info=True)
+        return None
 
 
 class URLPlaylistEntry(BasePlaylistEntry):
@@ -508,8 +591,10 @@ class URLPlaylistEntry(BasePlaylistEntry):
                         self.playlist.bot.config.load_audio_into_memory
                         and not self.memory_data
                     ):
+                        # Estimate PCM16 size: compressed audio is typically ~10x smaller
+                        estimated_pcm_size = os.path.getsize(self.filename) * 10
                         if not self.playlist.bot.filecache.has_memory_capacity(
-                            os.path.getsize(self.filename)
+                            estimated_pcm_size
                         ):
                             log.debug(
                                 "Memory limit reached, skipping in-memory load for cached file: %s",
@@ -521,18 +606,30 @@ class URLPlaylistEntry(BasePlaylistEntry):
                                     "Loading cached audio into memory: %s",
                                     self.title,
                                 )
-                                with open(self.filename, "rb") as f:
-                                    self.memory_data = f.read()
-                                    self.memory_size = len(self.memory_data)
+                                # Decode to PCM16, applying loudnorm EQ if enabled
+                                loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                                pcm_data = await decode_to_pcm16(
+                                    self.filename, loudnorm_gain
+                                )
+                                if pcm_data:
+                                    self.memory_data = pcm_data
+                                    self.memory_size = len(pcm_data)
 
-                                if self.playlist.bot.filecache.allocate_memory(
-                                    self.memory_size
-                                ):
-                                    log.debug(
-                                        "Successfully loaded cached file into memory: %d bytes",
-                                        self.memory_size,
-                                    )
+                                    if self.playlist.bot.filecache.allocate_memory(
+                                        self.memory_size
+                                    ):
+                                        log.debug(
+                                            "Successfully loaded cached file into memory: %d bytes PCM16",
+                                            self.memory_size,
+                                        )
+                                    else:
+                                        self.memory_data = None
+                                        self.memory_size = 0
                                 else:
+                                    log.error(
+                                        "Failed to decode cached audio to PCM16: %s",
+                                        self.title,
+                                    )
                                     self.memory_data = None
                                     self.memory_size = 0
                             except Exception as e:
@@ -816,9 +913,9 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
         # Load audio into memory if config is enabled and memory capacity available
         if self.playlist.bot.config.load_audio_into_memory:
-            if not self.playlist.bot.filecache.has_memory_capacity(
-                self.downloaded_bytes
-            ):
+            # Estimate PCM16 size: compressed audio is typically ~10x smaller
+            estimated_pcm_size = self.downloaded_bytes * 10
+            if not self.playlist.bot.filecache.has_memory_capacity(estimated_pcm_size):
                 log.info(
                     "Memory limit reached, skipping in-memory load for: %s",
                     self.title,
@@ -826,23 +923,32 @@ class URLPlaylistEntry(BasePlaylistEntry):
             else:
                 try:
                     log.debug("Loading audio into memory: %s", self.title)
-                    with open(self.filename, "rb") as f:
-                        self.memory_data = f.read()
-                        self.memory_size = len(self.memory_data)
+                    # Decode to PCM16, applying loudnorm EQ if enabled
+                    loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                    pcm_data = await decode_to_pcm16(self.filename, loudnorm_gain)
+                    if pcm_data:
+                        self.memory_data = pcm_data
+                        self.memory_size = len(pcm_data)
 
-                    if self.playlist.bot.filecache.allocate_memory(self.memory_size):
-                        log.debug(
-                            "Successfully loaded into memory: %d bytes",
-                            self.memory_size,
-                        )
+                        if self.playlist.bot.filecache.allocate_memory(
+                            self.memory_size
+                        ):
+                            log.debug(
+                                "Successfully loaded into memory: %d bytes PCM16",
+                                self.memory_size,
+                            )
+                        else:
+                            # Release the memory we tried to allocate
+                            self.memory_data = None
+                            self.memory_size = 0
+                            log.debug(
+                                "Memory allocation failed after decoding: %d bytes PCM16",
+                                estimated_pcm_size,
+                            )
                     else:
-                        # Release the memory we tried to allocate
+                        log.error("Failed to decode audio to PCM16: %s", self.title)
                         self.memory_data = None
                         self.memory_size = 0
-                        log.debug(
-                            "Memory allocation failed after reading: %d bytes",
-                            self.downloaded_bytes,
-                        )
                 except Exception as e:
                     log.error(
                         "Failed to load audio into memory: %s, error: %s",
@@ -1337,8 +1443,10 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
             # Load local file into memory if config is enabled
             if self.playlist.bot.config.load_audio_into_memory and not self.memory_data:
+                # Estimate PCM16 size: compressed audio is typically ~10x smaller
+                estimated_pcm_size = os.path.getsize(self.filename) * 10
                 if not self.playlist.bot.filecache.has_memory_capacity(
-                    os.path.getsize(self.filename)
+                    estimated_pcm_size
                 ):
                     log.debug(
                         "Memory limit reached, skipping in-memory load for local file: %s",
@@ -1347,18 +1455,28 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
                 else:
                     try:
                         log.debug("Loading local file into memory: %s", self.title)
-                        with open(self.filename, "rb") as f:
-                            self.memory_data = f.read()
-                            self.memory_size = len(self.memory_data)
+                        # Decode to PCM16, applying loudnorm EQ if enabled
+                        loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                        pcm_data = await decode_to_pcm16(self.filename, loudnorm_gain)
+                        if pcm_data:
+                            self.memory_data = pcm_data
+                            self.memory_size = len(pcm_data)
 
-                        if self.playlist.bot.filecache.allocate_memory(
-                            self.memory_size
-                        ):
-                            log.debug(
-                                "Successfully loaded local file into memory: %d bytes",
-                                self.memory_size,
-                            )
+                            if self.playlist.bot.filecache.allocate_memory(
+                                self.memory_size
+                            ):
+                                log.debug(
+                                    "Successfully loaded local file into memory: %d bytes PCM16",
+                                    self.memory_size,
+                                )
+                            else:
+                                self.memory_data = None
+                                self.memory_size = 0
                         else:
+                            log.error(
+                                "Failed to decode local file to PCM16: %s",
+                                self.title,
+                            )
                             self.memory_data = None
                             self.memory_size = 0
                     except Exception as e:

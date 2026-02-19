@@ -36,65 +36,41 @@ class InMemoryAudioSource(AudioSource):
         self,
         data: bytes,
         volume: float = 1.0,
-        loudnorm_gain: float = 1.0,
     ) -> None:
         """
-        Audio source that reads from in-memory data instead of a file.
-        Designed to work with FFmpegPCMAudio by providing a file-like BytesIO interface.
+        Audio source that reads from in-memory PCM16 data.
 
-        :param data: Audio data in bytes
+        Expects raw 16-bit 48kHz stereo PCM data (S16LE format).
+        This is the format Discord requires for non-Opus audio sources.
+
+        :param data: Raw PCM16 audio data (48kHz, stereo, 16-bit)
         :param volume: Initial volume level (0.0 to 1.0)
-        :param loudnorm_gain: Gain multiplier from loudnorm EQ processing
         """
         self._data = io.BytesIO(data)
         self._volume = volume
-        self._loudnorm_gain = loudnorm_gain
         self._position = 0
         self._size = len(data)
         self._closed = False
 
     def read(self) -> bytes:
-        """Read 20ms of audio data (960 bytes for 48kHz stereo)."""
+        """Read 20ms of audio data (3840 bytes for 48kHz stereo 16-bit PCM)."""
         if self._closed:
             return b""
 
         # Discord's audio system expects 20ms frames
-        # For 48kHz stereo 16-bit, that's 960 bytes per frame
-        frame_size = 960
+        # For 48kHz stereo 16-bit, that's 3840 bytes per frame
+        # (48000 samples/sec * 0.02 sec * 2 channels * 2 bytes/sample)
+        frame_size = 3840
         data = self._data.read(frame_size)
 
         if not data:
             self._closed = True
             return b""
 
-        if self._loudnorm_gain != 1.0:
-            data = self._apply_loudnorm_gain(data)
-
         if self._volume != 1.0:
             data = self._apply_volume(data)
 
         return data
-
-    def _apply_loudnorm_gain(self, frame: bytes) -> bytes:
-        """Apply loudnorm gain to PCM16 audio samples."""
-        if len(frame) % 2 != 0:
-            return frame
-
-        samples = bytearray(frame)
-        gain = self._loudnorm_gain
-
-        for i in range(0, len(samples), 2):
-            sample = int.from_bytes(samples[i : i + 2], "little", signed=True)
-            adjusted = int(sample * gain)
-
-            if adjusted < -32768:
-                adjusted = -32768
-            elif adjusted > 32767:
-                adjusted = 32767
-
-            samples[i : i + 2] = adjusted.to_bytes(2, "little", signed=True)
-
-        return bytes(samples)
 
     def _apply_volume(self, frame: bytes) -> bytes:
         """Apply volume multiplier to PCM16 audio samples."""
@@ -523,11 +499,10 @@ class MusicPlayer(EventEmitter, Serializable):
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     # Use InMemoryAudioSource directly for in-memory audio
                     # This avoids FFmpeg and its stdin buffering issues
-                    loudnorm_gain = getattr(entry, "_loudnorm_gain", 1.0)
+                    # Audio is already decoded to PCM16 with EQ applied during loading
                     source = InMemoryAudioSource(
                         entry.memory_data,
                         volume=self.volume,
-                        loudnorm_gain=loudnorm_gain,
                     )
                     log.ffmpeg(  # type: ignore[attr-defined]
                         "Using pure in-memory audio source for: %s (%d bytes)",
