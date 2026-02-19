@@ -495,6 +495,9 @@ class MusicPlayer(EventEmitter, Serializable):
                 else:
                     aoptions = "-vn"
 
+                # Initialize stderr_io as None; will be set for FFmpeg-based sources
+                stderr_io: Optional[io.BytesIO] = None
+
                 # Determine audio source: use in-memory if available and config is enabled
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     # Use InMemoryAudioSource directly for in-memory audio
@@ -571,15 +574,18 @@ class MusicPlayer(EventEmitter, Serializable):
                 self.state = MusicPlayerState.PLAYING
                 self._current_entry = entry
 
-                self._stderr_future = asyncio.Future()
+                # Only create stderr thread for FFmpeg-based sources
+                # InMemoryAudioSource doesn't use FFmpeg, so no stderr to read
+                if stderr_io is not None:
+                    self._stderr_future = asyncio.Future()
 
-                stderr_thread = Thread(
-                    target=filter_stderr,
-                    args=(stderr_io, self._stderr_future),
-                    name="MB_FFmpegStdErrReader",
-                )
+                    stderr_thread = Thread(
+                        target=filter_stderr,
+                        args=(stderr_io, self._stderr_future),
+                        name="MB_FFmpegStdErrReader",
+                    )
 
-                stderr_thread.start()
+                    stderr_thread.start()
 
                 self.emit("play", player=self, entry=entry)
 
