@@ -502,46 +502,46 @@ class URLPlaylistEntry(BasePlaylistEntry):
                             self.filename = file_cache_path
                             self._is_downloaded = True
 
-                        # Load cached file into memory if config is enabled
-                        if (
-                            self.playlist.bot.config.load_audio_into_memory
-                            and not self.memory_data
+                    # Load cached file into memory if config is enabled
+                    if (
+                        self.playlist.bot.config.load_audio_into_memory
+                        and not self.memory_data
+                    ):
+                        if not self.playlist.bot.filecache.has_memory_capacity(
+                            os.path.getsize(self.filename)
                         ):
-                            if not self.playlist.bot.filecache.has_memory_capacity(
-                                os.path.getsize(self.filename)
-                            ):
+                            log.debug(
+                                "Memory limit reached, skipping in-memory load for cached file: %s",
+                                self.title,
+                            )
+                        else:
+                            try:
                                 log.debug(
-                                    "Memory limit reached, skipping in-memory load for cached file: %s",
+                                    "Loading cached audio into memory: %s",
                                     self.title,
                                 )
-                            else:
-                                try:
-                                    log.debug(
-                                        "Loading cached audio into memory: %s",
-                                        self.title,
-                                    )
-                                    with open(self.filename, "rb") as f:
-                                        self.memory_data = f.read()
-                                        self.memory_size = len(self.memory_data)
+                                with open(self.filename, "rb") as f:
+                                    self.memory_data = f.read()
+                                    self.memory_size = len(self.memory_data)
 
-                                    if self.playlist.bot.filecache.allocate_memory(
-                                        self.memory_size
-                                    ):
-                                        log.debug(
-                                            "Successfully loaded cached file into memory: %d bytes",
-                                            self.memory_size,
-                                        )
-                                    else:
-                                        self.memory_data = None
-                                        self.memory_size = 0
-                                except Exception as e:
-                                    log.error(
-                                        "Failed to load cached audio into memory: %s, error: %s",
-                                        self.title,
-                                        str(e),
+                                if self.playlist.bot.filecache.allocate_memory(
+                                    self.memory_size
+                                ):
+                                    log.debug(
+                                        "Successfully loaded cached file into memory: %d bytes",
+                                        self.memory_size,
                                     )
+                                else:
                                     self.memory_data = None
                                     self.memory_size = 0
+                            except Exception as e:
+                                log.error(
+                                    "Failed to load cached audio into memory: %s, error: %s",
+                                    self.title,
+                                    str(e),
+                                )
+                                self.memory_data = None
+                                self.memory_size = 0
 
                 # nothing cached, time to download for real.
                 else:
