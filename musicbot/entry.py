@@ -490,6 +490,9 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
             entry = cls(playlist, info, author=author, channel=channel)
             entry.filename = filename
+            # Strip .json extension if present (yt-dlp may include it for metadata files)
+            if entry.filename.endswith(".json"):
+                entry.filename = entry.filename[:-5]
 
             return entry
         except (ValueError, TypeError, KeyError) as e:
@@ -906,6 +909,9 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
         self._is_downloaded = True
         self.filename = info.expected_filename or ""
+        # Strip .json extension if present (yt-dlp may include it for metadata files)
+        if self.filename.endswith(".json"):
+            self.filename = self.filename[:-5]
 
         # It should be safe to get our newly downloaded file size now...
         # This should also leave self.downloaded_bytes set to 0 if the file is in cache already.
@@ -1176,6 +1182,9 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
         self.info: YtdlpResponseDict = info
         self.filename = self.expected_filename or ""
+        # Strip .json extension if present (yt-dlp may include it for metadata files)
+        if self.filename.endswith(".json"):
+            self.filename = self.filename[:-5]
 
         # TODO: maybe it is worth getting duration as early as possible...
 
