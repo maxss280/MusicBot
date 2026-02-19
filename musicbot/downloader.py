@@ -101,7 +101,7 @@ class Downloader:
             )
             ytdl_format_options["cookiefile"] = bot.config.cookies_path
             ytdl_format_options["extractor_args"] = {
-                "youtube": {"player_client": ["android"]}
+                "youtube": {"player_client": ["android", "web"]}
             }
 
         if bot.config.ytdlp_proxy:
