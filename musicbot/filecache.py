@@ -63,12 +63,12 @@ class AudioFileCache:
         cache_file_path = self.cache_path.with_name(filename)
 
         if ignore_ext:
-            if cache_file_path.is_file():
+            if cache_file_path.is_file() and cache_file_path.suffix != ".json":
                 return str(cache_file_path)
 
             safe_stem = glob.escape(pathlib.Path(filename).stem)
             for item in self.cache_path.glob(f"{safe_stem}.*"):
-                if item.is_file():
+                if item.is_file() and item.suffix != ".json":
                     return str(item)
 
         elif cache_file_path.is_file():
