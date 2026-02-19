@@ -61,7 +61,7 @@ class AudioFileCache:
         """
         file_path = pathlib.Path(filename)
         filename = file_path.name
-        cache_file_path = self.cache_path.with_name(filename)
+        cache_file_path = self.cache_path / filename
 
         if ignore_ext:
             if cache_file_path.is_file() and cache_file_path.suffix != ".json":
