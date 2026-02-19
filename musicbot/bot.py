@@ -1350,7 +1350,9 @@ class MusicBot(discord.Client):
                     # Deduplicate autoplaylist while preserving order
                     seen = set()
                     deduped = []
-                    for url in self.server_data[player.voice_client.guild.id].autoplaylist:
+                    for url in self.server_data[
+                        player.voice_client.guild.id
+                    ].autoplaylist:
                         if url not in seen:
                             seen.add(url)
                             deduped.append(url)

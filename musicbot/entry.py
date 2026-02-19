@@ -494,6 +494,11 @@ class URLPlaylistEntry(BasePlaylistEntry):
             if entry.filename.endswith(".json"):
                 entry.filename = entry.filename[:-5]
 
+            # Set __expected_filename in info data so cache checks work correctly
+            # This is needed because expected_filename property reads from info data
+            if entry.filename:
+                entry.info.data["__expected_filename"] = entry.filename
+
             return entry
         except (ValueError, TypeError, KeyError) as e:
             log.error("Could not load %s", cls.__name__, exc_info=e)
