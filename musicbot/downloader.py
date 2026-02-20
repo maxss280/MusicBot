@@ -61,7 +61,7 @@ ytdl_format_options_immutable = MappingProxyType(
 
 
 # Fuck your useless bugreports message that gets two link embeds and confuses users
-youtube_dl.utils.bug_reports_message = lambda: ""
+youtube_dl.utils.bug_reports_message = lambda *args, **kwargs: ""
 
 """
     Alright, here's the problem.  To catch youtube-dl errors for their useful information, I have to
