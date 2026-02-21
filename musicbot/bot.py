@@ -786,6 +786,7 @@ class MusicBot(discord.Client):
 
         # Otherwise we need to connect to the given channel.
         max_timeout = VOICE_CLIENT_RECONNECT_TIMEOUT * VOICE_CLIENT_MAX_RETRY_CONNECT
+        client: discord.VoiceClient = None  # type: ignore[assignment]
         for attempt in range(1, (VOICE_CLIENT_MAX_RETRY_CONNECT + 1)):
             timeout = attempt * VOICE_CLIENT_RECONNECT_TIMEOUT
             if timeout > max_timeout:
@@ -820,6 +821,19 @@ class MusicBot(discord.Client):
                 raise exceptions.CommandError(
                     "MusicBot connection to voice was cancelled. This is odd. Maybe restart?"
                 ) from e
+
+        if client is None:
+            log.critical(
+                "MusicBot could not connect to voice channel after %s attempts:  %s",
+                VOICE_CLIENT_MAX_RETRY_CONNECT,
+                channel,
+            )
+            raise exceptions.CommandError(
+                f"Unable to connect to voice channel `{channel.name}` after multiple attempts.\n"
+                "This may be due to Discord API issues or network problems.\n"
+                "Please wait a moment and try again, or restart the bot if the issue persists.",
+                expire_in=45,
+            )
 
         # TODO: look into Stage channel handling and test this at some point.
         # It is likely that we'll want to respond to a voice state update instead
@@ -8055,13 +8069,16 @@ class MusicBot(discord.Client):
                                 player._current_entry
                                 and player._current_entry.memory_data
                             ):
-                                log.info(
-                                    "Player has in-memory audio, voice client updated"
-                                )
+                                # Actually update the player's voice client reference
+                                player.update_voice_client(voice_client)
                             else:
-                                log.info(
+                                log.debug(
                                     "Player has no in-memory audio, will need to reload"
                                 )
+                        else:
+                            log.debug(
+                                "Skipping voice client update: player is dead or does not exist"
+                            )
                 except Exception as e:
                     log.warning(
                         "Failed to get voice client during disconnect: %s",
@@ -8109,9 +8126,12 @@ class MusicBot(discord.Client):
                         )
                     else:
                         # Player still exists, just update voice client
-                        await self.get_voice_client(target_channel)
-                        # Update player's voice client reference
-                        r_player.update_voice_client(target_channel.guild.voice_client)
+                        new_voice_client = await self.get_voice_client(target_channel)
+                        log.info(
+                            "Successfully obtained voice client for guild: %s",
+                            target_channel.guild.name,
+                        )
+                        r_player.update_voice_client(new_voice_client)
 
                     # Check if playing, if so resume
                     if r_player.is_paused and r_player._current_entry:
@@ -8124,7 +8144,11 @@ class MusicBot(discord.Client):
                         log.debug("Player stopped or no entry, starting playback")
                         r_player.play()
 
-                except (TypeError, exceptions.PermissionsError):
+                except (
+                    TypeError,
+                    exceptions.PermissionsError,
+                    exceptions.CommandError,
+                ):
                     log.warning(
                         "Cannot auto join channel:  %s",
                         before.channel,
