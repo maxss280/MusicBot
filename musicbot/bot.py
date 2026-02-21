@@ -798,6 +798,14 @@ class MusicBot(discord.Client):
                     "MusicBot could not connect to the channel. Try again later, or restart the bot if this continues."
                 )
 
+            log.debug(
+                "Voice connection attempt %s/%s to %s (timeout=%s)",
+                attempt,
+                VOICE_CLIENT_MAX_RETRY_CONNECT,
+                channel,
+                timeout,
+            )
+
             try:
                 client: discord.VoiceClient = await channel.connect(
                     timeout=timeout,

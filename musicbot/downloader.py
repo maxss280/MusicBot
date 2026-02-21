@@ -314,6 +314,12 @@ class Downloader:
                 video_id = video_id_match.group(1)
                 cached_path = self._cached_file_by_pattern(video_id, song_subject_hash)
                 if cached_path:
+                    log.debug(
+                        "Cache hit for video_id=%s (hash=%s), using cached file: %s",
+                        video_id,
+                        song_subject_hash,
+                        cached_path,
+                    )
                     # Load metadata from sidecar file if available.
                     metadata = self.bot.filecache.get_metadata_for_cached_file(
                         video_id, song_subject_hash
@@ -331,6 +337,11 @@ class Downloader:
                         "id": video_id,
                     }
                     return YtdlpResponseDict(minimal_data)
+                log.debug(
+                    "Cache miss for video_id=%s (hash=%s), falling through to extraction",
+                    video_id,
+                    song_subject_hash,
+                )
         # Use ytdl or one of our custom integration to get info.
         data = await self._filtered_extract_info(
             song_subject,
