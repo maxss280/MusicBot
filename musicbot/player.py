@@ -70,7 +70,7 @@ class InMemoryAudioSource(AudioSource):
             self._data.seek(start_position)
 
         if USE_NUMPY and self._size >= 3840:
-            self._numpy_array = np.frombuffer(self._data.getvalue(), dtype=np.int16)
+            self._numpy_array = np.frombuffer(self._data.getvalue(), dtype=np.int16).copy()
         else:
             self._numpy_array = None
 
@@ -130,15 +130,17 @@ class InMemoryAudioSource(AudioSource):
         if len(frame) % 2 != 0:
             return frame
 
+        if self._volume == 1.0 or self._volume == 0.0:
+            return frame
+
         if USE_NUMPY and len(frame) >= 4:
             try:
                 arr = np.frombuffer(frame, dtype=np.int16)
 
-                adjusted = arr * self._volume
+                arr *= self._volume
+                np.clip(arr, -32768, 32767, out=arr)
 
-                adjusted = np.clip(adjusted, -32768, 32767)
-
-                return adjusted.astype(np.int16).tobytes()
+                return arr.tobytes()
             except (ValueError, MemoryError) as e:
                 log.debug(
                     "NumPy volume application failed (%s), falling back to Python loop",
