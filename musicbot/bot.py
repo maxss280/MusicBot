@@ -3411,6 +3411,16 @@ class MusicBot(discord.Client):
         async with lock:
             if not player.voice_client.is_connected():
                 if self.loop:
+                    # Check total timeout (120 seconds max wait)
+                    total_wait_time = 3 * _lc * (_lc + 1) // 2
+                    if total_wait_time >= 120:
+                        log.warning(
+                            "Auto-pause max wait exceeded for guild: %s, giving up on auto-reconnect",
+                            player.voice_client.guild,
+                        )
+                        player.paused_auto = False
+                        return
+
                     naptime = 3 * (1 + _lc)
                     log.warning(
                         "%sVoiceClient not connected, waiting %s seconds to handle auto-pause in guild:  %s",

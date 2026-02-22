@@ -393,8 +393,35 @@ class MusicPlayer(EventEmitter, Serializable):
             log.warning("Cannot update voice client: no current entry")
             return False
 
+        # Reload source if it was released (memory_data exists but _source is None)
+        if not self._source and self._current_entry.memory_data is not None:
+            log.info(
+                "Reloading audio source for reconnection: %s",
+                self._current_entry.title,
+            )
+            try:
+                # Calculate position to resume from (in bytes)
+                progress_bytes = 0
+                if hasattr(self, "progress") and self.progress is not None:
+                    progress_seconds = self.progress
+                    progress_bytes = int(progress_seconds * 192000)
+
+                self._source = InMemoryAudioSource(
+                    self._current_entry.memory_data,
+                    volume=self.volume,
+                    start_position=progress_bytes,
+                )
+                log.debug(
+                    "Recreated InMemoryAudioSource (%d bytes) at position %d",
+                    len(self._current_entry.memory_data),
+                    progress_bytes,
+                )
+            except Exception as e:
+                log.error("Failed to reload audio source: %s", e, exc_info=True)
+                return False
+
         if not self._source:
-            log.warning("Cannot update voice client: no audio source")
+            log.warning("Cannot update voice client: no audio source after reload attempt")
             return False
 
         # Update voice client reference
@@ -404,11 +431,16 @@ class MusicPlayer(EventEmitter, Serializable):
         # Update the current player reference
         self._current_player = new_voice_client
 
+        # Check if voice_client has a channel before accessing it
         log.debug(
-            "Updated voice client from %s to %s for entry: %s",
-            old_voice.channel.name if old_voice else "None",
-            new_voice_client.channel.name,
+            "Updated voice client for entry: %s",
             self._current_entry.title,
+        )
+        if old_voice:
+            log.debug("  Old voice: %s", old_voice.channel.name if old_voice.channel else "None")
+        log.debug(
+            "  New voice: %s",
+            new_voice_client.channel.name if new_voice_client.channel else "None",
         )
         return True
 
@@ -725,10 +757,26 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 if not self.voice_client.is_connected():
                     log.warning(
-                        "Voice client not connected, cannot play entry: %s", entry
+                        "Voice client not connected, attempting reconnection for entry: %s",
+                        entry.title,
                     )
-                    self._playback_finished()
-                    return
+
+                    # Try to get a fresh voice client
+                    try:
+                        new_voice = await self.bot.get_voice_client(self.voice_client.channel)
+                        if not self.update_voice_client(new_voice):
+                            log.warning(
+                                "Failed to update voice client, waiting for reconnection"
+                            )
+                            self._playback_finished()
+                            return
+                    except Exception as e:
+                        log.warning(
+                            "Reconnection attempt failed, deferring to auto-pause handler: %s",
+                            e,
+                        )
+                        self._playback_finished()
+                        return
 
                 self.voice_client.play(self._source, after=self._playback_finished)
 
