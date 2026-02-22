@@ -70,7 +70,9 @@ class InMemoryAudioSource(AudioSource):
             self._data.seek(start_position)
 
         if USE_NUMPY and self._size >= 3840:
-            self._numpy_array = np.frombuffer(self._data.getvalue(), dtype=np.int16).copy()
+            self._numpy_array = np.frombuffer(
+                self._data.getvalue(), dtype=np.int16
+            ).copy()
         else:
             self._numpy_array = None
 
@@ -421,7 +423,9 @@ class MusicPlayer(EventEmitter, Serializable):
                 return False
 
         if not self._source:
-            log.warning("Cannot update voice client: no audio source after reload attempt")
+            log.warning(
+                "Cannot update voice client: no audio source after reload attempt"
+            )
             return False
 
         # Update voice client reference
@@ -437,7 +441,10 @@ class MusicPlayer(EventEmitter, Serializable):
             self._current_entry.title,
         )
         if old_voice:
-            log.debug("  Old voice: %s", old_voice.channel.name if old_voice.channel else "None")
+            log.debug(
+                "  Old voice: %s",
+                old_voice.channel.name if old_voice.channel else "None",
+            )
         log.debug(
             "  New voice: %s",
             new_voice_client.channel.name if new_voice_client.channel else "None",
@@ -763,19 +770,19 @@ class MusicPlayer(EventEmitter, Serializable):
 
                     # Try to get a fresh voice client
                     try:
-                        new_voice = await self.bot.get_voice_client(self.voice_client.channel)
+                        new_voice = await self.bot.get_voice_client(
+                            self.voice_client.channel
+                        )
                         if not self.update_voice_client(new_voice):
                             log.warning(
                                 "Failed to update voice client, waiting for reconnection"
                             )
-                            self._playback_finished()
                             return
                     except Exception as e:
                         log.warning(
                             "Reconnection attempt failed, deferring to auto-pause handler: %s",
                             e,
                         )
-                        self._playback_finished()
                         return
 
                 self.voice_client.play(self._source, after=self._playback_finished)
