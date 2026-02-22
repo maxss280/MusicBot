@@ -130,17 +130,18 @@ class InMemoryAudioSource(AudioSource):
         if len(frame) % 2 != 0:
             return frame
 
-        if self._volume == 1.0 or self._volume == 0.0:
+        if self._volume == 1.0:
             return frame
+
+        if self._volume == 0.0:
+            return b"\x00" * len(frame)
 
         if USE_NUMPY and len(frame) >= 4:
             try:
                 arr = np.frombuffer(frame, dtype=np.int16)
-
-                arr *= self._volume
-                np.clip(arr, -32768, 32767, out=arr)
-
-                return arr.tobytes()
+                arr = arr * self._volume
+                arr = np.clip(arr, -32768, 32767)
+                return arr.astype(np.int16).tobytes()
             except (ValueError, MemoryError) as e:
                 log.debug(
                     "NumPy volume application failed (%s), falling back to Python loop",
