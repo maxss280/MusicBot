@@ -1,5 +1,8 @@
 pynacl
-discord.py [voice, speed] >= 2.4.0
+# Installing discord.py from GitHub master for DAVE protocol support
+# (DAVE support not yet in PyPI release, expected in v2.7.0)
+discord.py [voice, speed] @ git+https://github.com/Rapptz/discord.py.git@master
+davey >= 0.1.0  # Python bindings for Discord's DAVE E2EE protocol
 pip >= 24.0.0
 yt-dlp >= 2024.0.0
 colorlog >= 6.8.0
