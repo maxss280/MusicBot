@@ -688,10 +688,12 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
             if self.playlist.bot.config.use_experimental_equalization:
                 try:
-                    self._aopt_eq = await self.get_mean_volume(self.filename)
+                    # Get loudnorm options once and reuse for both EQ and gain
+                    loudnorm_opts = await self.get_mean_volume(self.filename)
+                    self._aopt_eq = loudnorm_opts
                     if self._aopt_eq:
                         self._loudnorm_gain = await self.get_loudnorm_gain(
-                            self.filename
+                            self.filename, loudnorm_opts
                         )
 
                 # Unfortunate evil that we abide for now...
@@ -844,15 +846,18 @@ class URLPlaylistEntry(BasePlaylistEntry):
         )
         return loudnorm_opts
 
-    async def get_loudnorm_gain(self, input_file: str) -> float:
+    async def get_loudnorm_gain(
+        self, input_file: str, loudnorm_opts: Optional[str] = None
+    ) -> float:
         """
         Extract loudnorm offset in dB and convert to linear gain multiplier.
         Returns the gain multiplier (1.0 = no change).
         """
         log.debug("Calculating loudnorm gain for: %s", input_file)
 
-        # Get the loudnorm options (which already extracts offset)
-        loudnorm_opts = await self.get_mean_volume(input_file)
+        # Get the loudnorm options (reuse if already computed)
+        if loudnorm_opts is None:
+            loudnorm_opts = await self.get_mean_volume(input_file)
 
         # Extract offset from loudnorm_opts string
         offset_match = re.search(r"offset=([\-]?\d+\.?\d*)", loudnorm_opts)
@@ -1438,10 +1443,12 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
             if self.playlist.bot.config.use_experimental_equalization:
                 try:
-                    self._aopt_eq = await self.get_mean_volume(self.filename)
+                    # Get loudnorm options once and reuse for both EQ and gain
+                    loudnorm_opts = await self.get_mean_volume(self.filename)
+                    self._aopt_eq = loudnorm_opts
                     if self._aopt_eq:
                         self._loudnorm_gain = await self.get_loudnorm_gain(
-                            self.filename
+                            self.filename, loudnorm_opts
                         )
 
                 # Unfortunate evil that we abide for now...
