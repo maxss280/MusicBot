@@ -8110,13 +8110,14 @@ class MusicBot(discord.Client):
                         )
                         # Update player's voice client reference if player still exists
                         if player and not player.is_dead:
+                            # Always update the player's voice client reference
+                            player.update_voice_client(voice_client)
                             # Check if we have in-memory audio and can resume
                             if (
                                 player._current_entry
                                 and player._current_entry.memory_data
                             ):
-                                # Actually update the player's voice client reference
-                                player.update_voice_client(voice_client)
+                                log.debug("Player has in-memory audio, ready to resume")
                             else:
                                 log.debug(
                                     "Player has no in-memory audio, will need to reload"
