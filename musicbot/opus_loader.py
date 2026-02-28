@@ -1,6 +1,4 @@
 import logging
-import os
-import sys
 
 from discord import opus
 

@@ -1,5 +1,4 @@
 import subprocess
-from typing import List
 
 # VERSION is determined by asking the `git` executable about the current repository.
 # This fails if not cloned, or if git is not available for some reason.
@@ -30,7 +29,7 @@ try:
 
     VERSION = f"{_VERSION_P1}{_VERSION_P2}"
 
-except (subprocess.SubprocessError, OSError, ValueError) as e:
+except (subprocess.SubprocessError, OSError, ValueError):
     VERSION = "version_unknown"
 
 # constant string exempt from i18n

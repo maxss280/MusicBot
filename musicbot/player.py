@@ -787,13 +787,17 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 # Log DAVE/E2EE status before playing
                 try:
-                    dave_version = getattr(self.voice_client._connection, 'dave_protocol_version', 0)
-                    encryption_mode = getattr(self.voice_client._connection, 'mode', 'unknown')
+                    dave_version = getattr(
+                        self.voice_client._connection, "dave_protocol_version", 0
+                    )
+                    encryption_mode = getattr(
+                        self.voice_client._connection, "mode", "unknown"
+                    )
                     log.voicedebug(  # type: ignore[attr-defined]
                         "Starting playback - DAVE version: %s, Encryption: %s, Channel: %s",
                         dave_version,
                         encryption_mode,
-                        self.voice_client.channel.name
+                        self.voice_client.channel.name,
                     )
                 except AttributeError:
                     log.debug("Could not retrieve DAVE protocol information")

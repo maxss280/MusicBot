@@ -817,23 +817,27 @@ class MusicBot(discord.Client):
                 )
                 # Log DAVE/E2EE encryption status
                 try:
-                    dave_version = getattr(client._connection, 'dave_protocol_version', 0)
-                    encryption_mode = getattr(client._connection, 'mode', 'unknown')
+                    dave_version = getattr(
+                        client._connection, "dave_protocol_version", 0
+                    )
+                    encryption_mode = getattr(client._connection, "mode", "unknown")
                     if dave_version > 0:
                         log.info(
                             "DAVE E2EE enabled - Protocol version: %s, Encryption: %s",
                             dave_version,
-                            encryption_mode
+                            encryption_mode,
                         )
                     else:
                         log.warning(
                             "DAVE E2EE NOT enabled - Protocol version: %s, Encryption: %s. "
                             "Voice may stop working after March 2nd 2026!",
                             dave_version,
-                            encryption_mode
+                            encryption_mode,
                         )
                 except AttributeError:
-                    log.debug("Could not retrieve DAVE protocol information from voice connection")
+                    log.debug(
+                        "Could not retrieve DAVE protocol information from voice connection"
+                    )
                 break
             except asyncio.exceptions.TimeoutError:
                 log.warning(
@@ -8076,11 +8080,15 @@ class MusicBot(discord.Client):
         ):
             # Log DAVE/E2EE status on disconnect
             try:
-                dave_version = getattr(o_vc._connection, 'dave_protocol_version', 0) if o_vc else 0
-                encryption_mode = getattr(o_vc._connection, 'mode', 'unknown') if o_vc else 'unknown'
+                dave_version = (
+                    getattr(o_vc._connection, "dave_protocol_version", 0) if o_vc else 0
+                )
+                encryption_mode = (
+                    getattr(o_vc._connection, "mode", "unknown") if o_vc else "unknown"
+                )
             except AttributeError:
                 dave_version = 0
-                encryption_mode = 'unknown'
+                encryption_mode = "unknown"
 
             log.info(
                 "Disconnected from voice by Discord API in: %s/%s (Code: %s) [S:%s] [DAVE:%s]",
@@ -8088,7 +8096,11 @@ class MusicBot(discord.Client):
                 before.channel.name,
                 close_code,
                 state.name.upper() if state else None,
-                f"v{dave_version}/{encryption_mode}" if dave_version > 0 else "disabled",
+                (
+                    f"v{dave_version}/{encryption_mode}"
+                    if dave_version > 0
+                    else "disabled"
+                ),
             )
 
             # Get the player before connection cleanup
