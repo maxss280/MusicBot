@@ -8133,8 +8133,18 @@ class MusicBot(discord.Client):
                         exc_info=True,
                     )
 
-                # If we got a voice client, we're done - no need to run auto-join logic
-                if voice_client:
+                # If we got a voice client, resume playback and return
+                if voice_client and player and not player.is_dead:
+                    # Check if playing, if so resume
+                    if player.is_paused and player._current_entry:
+                        log.info(
+                            "Resuming paused player with entry: %s",
+                            player._current_entry.title,
+                        )
+                        player.resume()
+                    elif player.is_stopped or not player._current_entry:
+                        log.debug("Player stopped or no entry, starting playback")
+                        player.play()
                     return True
 
             # reconnect if the guild is configured to auto-join.
