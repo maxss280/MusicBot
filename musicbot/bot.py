@@ -8133,6 +8133,10 @@ class MusicBot(discord.Client):
                         exc_info=True,
                     )
 
+                # If we got a voice client, we're done - no need to run auto-join logic
+                if voice_client:
+                    return True
+
             # reconnect if the guild is configured to auto-join.
             if self.server_data[o_guild.id].auto_join_channel is not None:
                 # Look for the last channel we were in.
