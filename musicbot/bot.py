@@ -8200,6 +8200,14 @@ class MusicBot(discord.Client):
                         )
                         r_player.resume()
                     elif r_player.is_stopped or not r_player._current_entry:
+                        if (
+                            not r_player.voice_client
+                            or not r_player.voice_client.is_connected()
+                        ):
+                            log.warning(
+                                "Player stopped but voice client not connected, deferring playback"
+                            )
+                            return True
                         log.debug("Player stopped or no entry, starting playback")
                         r_player.play()
 
