@@ -711,13 +711,13 @@ curl -o autoplaylist.txt https://raw.githubusercontent.com/maxss280/MusicBot/mas
   musicbot</code></pre>
                         
                         <p><strong>Windows (PowerShell) version:</strong></p>
-                        <pre><code>docker run -it --name musicbot `
-  -v ${PWD}/options.ini:/musicbot/config/options.ini `
-  -v ${PWD}/permissions.ini:/musicbot/config/permissions.ini `
-  -v ${PWD}/autoplaylist.txt:/musicbot/config/autoplaylist.txt `
-  -v ${PWD}/audio_cache:/musicbot/audio_cache `
-  -v ${PWD}/data:/musicbot/data `
-  -v ${PWD}/logs:/musicbot/logs `
+                        <pre><code>docker run -it --name musicbot \`
+  -v \${PWD}/options.ini:/musicbot/config/options.ini \`
+  -v \${PWD}/permissions.ini:/musicbot/config/permissions.ini \`
+  -v \${PWD}/autoplaylist.txt:/musicbot/config/autoplaylist.txt \`
+  -v \${PWD}/audio_cache:/musicbot/audio_cache \`
+  -v \${PWD}/data:/musicbot/data \`
+  -v \${PWD}/logs:/musicbot/logs \`
   musicbot</code></pre>
                         
                         <h4>Docker Run Parameters Explained</h4>
