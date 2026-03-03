@@ -519,6 +519,11 @@ class MusicPlayer(EventEmitter, Serializable):
             if "Not connected" in error_str or "voice" in error_str.lower():
                 is_disconnect_error = True
 
+        # Also check if player was auto-paused - always preserve state in this case
+        # This handles: channel empty -> auto-pause -> disconnect -> should resume
+        if hasattr(self, "paused_auto") and self.paused_auto:
+            is_disconnect_error = True
+
         # For disconnect errors, keep entry and memory for resume
         # For normal completion, cleanup as usual
         if is_disconnect_error:

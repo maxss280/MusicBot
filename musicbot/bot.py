@@ -3472,6 +3472,13 @@ class MusicBot(discord.Client):
                         )
                 return
 
+        # Skip auto-pause check if not connected (avoid race with reconnection)
+        if not player.voice_client.is_connected():
+            log.debug(
+                "Skipping auto-pause check during reconnection in guild: %s", guild
+            )
+            return
+
         is_empty = is_empty_voice_channel(
             channel, include_bots=self.config.bot_exception_ids
         )
@@ -8064,10 +8071,17 @@ class MusicBot(discord.Client):
         ):
             o_vc = o_guild.voice_client
             # borrow this for logging sake.
-            close_code = (
-                o_vc._connection.ws._close_code  # pylint: disable=protected-access
-            )
-            state = o_vc._connection.state  # pylint: disable=protected-access
+            try:
+                close_code = (
+                    o_vc._connection.ws._close_code  # pylint: disable=protected-access
+                )
+                state = o_vc._connection.state  # pylint: disable=protected-access
+            except AttributeError:
+                # Connection state may not be available during certain disconnect scenarios
+                log.debug(
+                    "Voice connection state not available for logging in %s",
+                    o_guild.name,
+                )
 
         # These conditions are met when API terminates a voice client.
         # This could be a user initiated disconnect, but we have no way to tell.
@@ -8193,7 +8207,10 @@ class MusicBot(discord.Client):
                         r_player.update_voice_client(new_voice_client)
 
                     # Check if playing, if so resume
-                    if r_player.is_paused and r_player._current_entry:
+                    # Also check paused_auto for auto-pause scenarios where state might be unclear
+                    if r_player._current_entry and (
+                        r_player.is_paused or getattr(r_player, "paused_auto", False)
+                    ):
                         log.info(
                             "Resuming paused player with entry: %s",
                             r_player._current_entry.title,
