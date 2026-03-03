@@ -2408,14 +2408,51 @@ blacklist</div>
         document.querySelector('.search-box').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const items = document.querySelectorAll('.doc-item');
+            const categories = document.querySelectorAll('.category');
             
+            // Reset all items first
             items.forEach(item => {
-                const target = item.dataset.target;
-                if (docs[target]) {
-                    const content = docs[target].title.toLowerCase() + ' ' + docs[target].meta.toLowerCase() + ' ' + docs[target].content.toLowerCase();
-                    item.style.display = content.includes(query) ? 'block' : 'none';
-                }
+                item.style.display = 'block';
             });
+            
+            // Reset all categories
+            categories.forEach(cat => {
+                cat.style.display = 'block';
+                cat.classList.remove('expanded');
+                const content = cat.querySelector('.category-content');
+                if (content) content.style.maxHeight = null;
+            });
+            
+            if (query.length > 0) {
+                // Hide categories with no matches
+                categories.forEach(cat => {
+                    const catItems = cat.querySelectorAll('.doc-item');
+                    let hasMatch = false;
+                    
+                    catItems.forEach(item => {
+                        const target = item.dataset.target;
+                        if (docs[target]) {
+                            const content = docs[target].title.toLowerCase() + ' ' + docs[target].meta.toLowerCase() + ' ' + docs[target].content.toLowerCase();
+                            if (!content.includes(query)) {
+                                item.style.display = 'none';
+                            } else {
+                                hasMatch = true;
+                            }
+                        }
+                    });
+                    
+                    if (!hasMatch) {
+                        cat.style.display = 'none';
+                    } else {
+                        // Auto-expand category with matches
+                        const content = cat.querySelector('.category-content');
+                        if (content) {
+                            cat.classList.add('expanded');
+                            content.style.maxHeight = content.scrollHeight + 'px';
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>
