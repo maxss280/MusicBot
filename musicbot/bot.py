@@ -8259,6 +8259,27 @@ class MusicBot(discord.Client):
             player = self.players.get(o_guild.id)
             current_channel = before.channel if before.channel else None
 
+            # Debug: Log player state before attempting reconnection
+            if player:
+                log.debug(
+                    "Voice disconnect handler - Player state: is_dead=%s, state=%s, "
+                    "_current_entry=%s, memory_data=%s, paused_auto=%s",
+                    player.is_dead,
+                    player.state,
+                    player._current_entry.title if player._current_entry else None,
+                    (
+                        bool(player._current_entry.memory_data)
+                        if player._current_entry
+                        else False
+                    ),
+                    getattr(player, "paused_auto", False),
+                )
+            else:
+                log.debug(
+                    "Voice disconnect handler - No player found for guild %s",
+                    o_guild.id,
+                )
+
             # Don't call disconnect_voice_client (which kills player and releases memory)
             # Instead, pause the player and wait for auto-reconnection
 
@@ -8279,6 +8300,7 @@ class MusicBot(discord.Client):
                         # Update player's voice client reference if player still exists
                         if player and not player.is_dead:
                             # Always update the player's voice client reference
+                            log.debug("Updating voice client for player")
                             player.update_voice_client(voice_client)
                             # Check if we have in-memory audio and can resume
                             if (
@@ -8288,11 +8310,20 @@ class MusicBot(discord.Client):
                                 log.debug("Player has in-memory audio, ready to resume")
                             else:
                                 log.debug(
-                                    "Player has no in-memory audio, will need to reload"
+                                    "Player has no in-memory audio (entry=%s, memory=%s), "
+                                    "will need to reload",
+                                    bool(player._current_entry),
+                                    (
+                                        bool(player._current_entry.memory_data)
+                                        if player._current_entry
+                                        else False
+                                    ),
                                 )
                         else:
                             log.debug(
-                                "Skipping voice client update: player is dead or does not exist"
+                                "Skipping voice client update: player=%s, is_dead=%s",
+                                player,
+                                player.is_dead if player else "N/A",
                             )
                             # Clean up the voice client to prevent resource leak
                             try:

@@ -395,6 +395,15 @@ class MusicPlayer(EventEmitter, Serializable):
         :param new_voice_client: New VoiceClient to use for playback
         :returns: True if successful, False if no current entry or source
         """
+        log.debug(
+            "update_voice_client called - _current_entry=%s, _source=%s, "
+            "memory_data=%s, state=%s",
+            self._current_entry.title if self._current_entry else None,
+            bool(self._source),
+            bool(self._current_entry.memory_data) if self._current_entry else False,
+            self.state,
+        )
+
         if not self._current_entry:
             log.warning("Cannot update voice client: no current entry")
             return False
@@ -511,6 +520,14 @@ class MusicPlayer(EventEmitter, Serializable):
             log.debug("Playback finished, but _current_entry is None.")
             return
 
+        # Debug: Log playback finish details
+        log.debug(
+            "_playback_finished called for entry: %s, error: %s, error_type: %s",
+            entry.title,
+            error,
+            type(error).__name__ if error else "None",
+        )
+
         if self.repeatsong:
             self.playlist.entries.appendleft(entry)
         elif self.loopqueue:
@@ -520,13 +537,23 @@ class MusicPlayer(EventEmitter, Serializable):
         is_disconnect_error = False
         if error and hasattr(error, "args"):
             error_str = str(error)
+            log.debug("Checking error string for disconnect: '%s'", error_str)
             if "Not connected" in error_str or "voice" in error_str.lower():
                 is_disconnect_error = True
+                log.debug("Detected disconnect error pattern in: '%s'", error_str)
 
         # Also check if player was auto-paused - always preserve state in this case
         # This handles: channel empty -> auto-pause -> disconnect -> should resume
         if hasattr(self, "paused_auto") and self.paused_auto:
+            log.debug("Player was auto-paused, treating as disconnect error")
             is_disconnect_error = True
+
+        log.debug(
+            "Disconnect error detection result: is_disconnect_error=%s, error=%s, paused_auto=%s",
+            is_disconnect_error,
+            error,
+            getattr(self, "paused_auto", "N/A"),
+        )
 
         # For disconnect errors, keep entry and memory for resume
         # For normal completion, cleanup as usual
