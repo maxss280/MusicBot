@@ -1100,6 +1100,16 @@ class MusicBot(discord.Client):
         Event called by MusicPlayer when playback of an entry is started.
         """
         log.debug("Running on_player_play")
+
+        # Check voice connection before proceeding
+        # This prevents crashes when voice connection drops between songs
+        if not player.voice_client or not player.voice_client.is_connected():
+            log.debug(
+                "Voice client not connected when trying to play entry, "
+                "aborting on_player_play. Auto-reconnection will handle this."
+            )
+            return
+
         await self._handle_guild_auto_pause(player)
         await self.reset_player_inactivity(player)
         await self.update_now_playing_status()

@@ -810,6 +810,39 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 self.emit("play", player=self, entry=entry)
 
+                # Check if voice disconnected during event handler
+                # This handles the race condition where bot.py:on_player_play
+                # returns early due to disconnection
+                if not self.voice_client or not self.voice_client.is_connected():
+                    log.warning(
+                        "Voice disconnected during play event for entry: %s, aborting playback",
+                        entry.title,
+                    )
+                    self.state = MusicPlayerState.STOPPED
+                    self._current_entry = None
+                    self._source = None
+                    self._kill_current_player()
+
+                    # Release in-memory audio data if we had it
+                    if entry.memory_data is not None:
+                        entry_memory_size = entry.memory_size
+                        entry.memory_data = None
+                        entry.memory_size = 0
+                        self.bot.filecache.release_memory(entry_memory_size)
+                        log.debug(
+                            "Released in-memory audio for: %s (%d bytes)",
+                            entry.title,
+                            entry_memory_size,
+                        )
+
+                    self.emit(
+                        "error",
+                        player=self,
+                        entry=entry,
+                        ex=Exception("Voice connection lost during playback start"),
+                    )
+                    return
+
     async def _handle_file_cleanup(self, entry: EntryTypes) -> None:
         """
         A helper used to clean up media files via call-later, when file
