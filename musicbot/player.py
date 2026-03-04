@@ -396,8 +396,9 @@ class MusicPlayer(EventEmitter, Serializable):
         :returns: True if successful, False if no current entry or source
         """
         log.debug(
-            "update_voice_client called - _current_entry=%s, _source=%s, "
+            "update_voice_client called - guild=%s, _current_entry=%s, _source=%s, "
             "memory_data=%s, state=%s",
+            self.voice_client.guild.id if self.voice_client else None,
             self._current_entry.title if self._current_entry else None,
             bool(self._source),
             bool(self._current_entry.memory_data) if self._current_entry else False,
@@ -522,7 +523,8 @@ class MusicPlayer(EventEmitter, Serializable):
 
         # Debug: Log playback finish details
         log.debug(
-            "_playback_finished called for entry: %s, error: %s, error_type: %s",
+            "_playback_finished called for guild=%s, entry: %s, error: %s, error_type: %s",
+            self.voice_client.guild.id if self.voice_client else None,
             entry.title,
             error,
             type(error).__name__ if error else "None",
