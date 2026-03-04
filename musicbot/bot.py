@@ -197,6 +197,12 @@ class MusicBot(discord.Client):
         self.spotify: Optional[Spotify] = None
         self.session: Optional[aiohttp.ClientSession] = None
 
+        self._voice_disconnect_count: int = 0
+        self._voice_disconnect_times: List[float] = []
+        self._voice_disconnect_lock: Optional[asyncio.Lock] = None
+        self._reconnect_cooldown_until: float = 0.0
+        self._reconnect_cooldown_active: bool = False
+
         intents = discord.Intents.all()
         intents.typing = False
         intents.presences = False
@@ -245,6 +251,9 @@ class MusicBot(discord.Client):
 
     async def setup_hook(self) -> None:
         """async init phase that is called by d.py before login."""
+        # Initialize asyncio lock now that we have an event loop
+        self._voice_disconnect_lock = asyncio.Lock()
+
         if self.config.enable_queue_history_global:
             await self.playlist_mgr.global_history.load()
 
@@ -8005,8 +8014,45 @@ class MusicBot(discord.Client):
         if member == self.user:
             # check if bot was disconnected from a voice channel
             if not after.channel and before.channel and not self.network_outage:
-                if await self._handle_api_disconnect(before):
-                    return
+                try:
+                    should_stop = await self._track_voice_disconnect()
+                    if should_stop:
+                        log.critical(
+                            "Too many voice disconnects - aborting reconnection to prevent infinite loop"
+                        )
+                        return
+                    if await self._handle_api_disconnect(before):
+                        return
+                except (AttributeError, TypeError) as e:
+                    log.error(
+                        "Attribute/Type error in voice disconnect handling: %s",
+                        str(e),
+                        exc_info=True,
+                    )
+                    log.critical(
+                        "Voice disconnect handler crashed - bot may be in unstable state"
+                    )
+                except Exception as e:
+                    log.critical(
+                        "Unexpected error in voice disconnect handling: %s",
+                        str(e),
+                        exc_info=True,
+                    )
+                    log.critical(
+                        "Voice disconnect handler crashed - bot may be in unstable state"
+                    )
+                    # Still call auto-pause to ensure player state is handled
+                    try:
+                        if before.channel:
+                            player = self.get_player_in(before.channel.guild)
+                            if player and not follow_user:
+                                await self._handle_guild_auto_pause(player)
+                    except Exception as auto_pause_error:
+                        log.error(
+                            "Auto-pause failed during error recovery: %s",
+                            str(auto_pause_error),
+                            exc_info=True,
+                        )
 
         if before.channel:
             player = self.get_player_in(before.channel.guild)
@@ -8054,6 +8100,71 @@ class MusicBot(discord.Client):
                 if player.is_paused:
                     player.resume()
 
+    async def _track_voice_disconnect(self) -> bool:
+        """
+        Track voice disconnects to detect when the bot is stuck in a disconnect loop.
+        Returns True if the bot should stop trying to reconnect (critical failure).
+        """
+        async with self._voice_disconnect_lock:
+            current_time = time.time()
+            self._voice_disconnect_times.append(current_time)
+            self._voice_disconnect_count += 1
+
+            # Keep only disconnects from the last 60 seconds
+            self._voice_disconnect_times = [
+                t for t in self._voice_disconnect_times if current_time - t < 60
+            ]
+
+            # Reset counter if no disconnects in the last 60 seconds
+            if not self._voice_disconnect_times:
+                self._voice_disconnect_count = 0
+
+            COOLDOWN_PERIOD = 300
+
+            if len(self._voice_disconnect_times) >= 5:
+                log.warning(
+                    "Rapid voice disconnects detected: %d in the last 60 seconds",
+                    len(self._voice_disconnect_times),
+                )
+            if len(self._voice_disconnect_times) >= 15:
+                log.critical(
+                    "Critical: %d voice disconnects in 60 seconds - stopping reconnection attempts",
+                    len(self._voice_disconnect_times),
+                )
+                disconnect_count = len(self._voice_disconnect_times)
+                self._reconnect_cooldown_active = True
+                self._reconnect_cooldown_until = current_time + COOLDOWN_PERIOD
+                self._voice_disconnect_times = []
+                self._voice_disconnect_count = 0
+                log.critical(
+                    "Reconnection cooldown activated: %d seconds",
+                    COOLDOWN_PERIOD,
+                )
+                owner = self._get_owner_member()
+                if owner:
+                    try:
+                        asyncio.create_task(
+                            owner.send(
+                                "⚠️ **Voice Connection Alert**\n\n"
+                                f"The bot has experienced {disconnect_count} voice disconnects in rapid succession.\n"
+                                f"Reconnection attempts have been paused for {COOLDOWN_PERIOD // 60} minutes to prevent infinite loops.\n"
+                                f"Reconnection will resume automatically after the cooldown period."
+                            )
+                        )
+                        log.info(
+                            "Owner notification sent via DM for voice disconnect threshold"
+                        )
+                    except (AttributeError, TypeError) as e:
+                        log.warning("Failed to send owner notification: %s", str(e))
+                    except Exception as e:
+                        log.warning(
+                            "Failed to send owner notification: %s",
+                            str(e),
+                            exc_info=True,
+                        )
+                return True
+        return False
+
     async def _handle_api_disconnect(self, before: discord.VoiceState) -> bool:
         """
         Method called from on_voice_state_update when MusicBot is disconnected from voice.
@@ -8061,6 +8172,22 @@ class MusicBot(discord.Client):
         if not before.channel:
             log.debug("VoiceState disconnect before.channel is None.")
             return False
+
+        if self._reconnect_cooldown_active:
+            current_time = time.time()
+            if current_time < self._reconnect_cooldown_until:
+                remaining = int(self._reconnect_cooldown_until - current_time)
+                log.debug(
+                    "Reconnection cooldown active: %d seconds remaining, skipping reconnection",
+                    remaining,
+                )
+                return False
+            else:
+                log.info(
+                    "Reconnection cooldown expired, resetting state and allowing reconnection"
+                )
+                self._reconnect_cooldown_active = False
+                self._reconnect_cooldown_until = 0.0
 
         o_guild = self.get_guild(before.channel.guild.id)
         o_vc: Optional[discord.VoiceClient] = None
@@ -8072,10 +8199,11 @@ class MusicBot(discord.Client):
             o_vc = o_guild.voice_client
             # borrow this for logging sake.
             try:
-                close_code = (
-                    o_vc._connection.ws._close_code  # pylint: disable=protected-access
-                )
-                state = o_vc._connection.state  # pylint: disable=protected-access
+                # Use getattr to safely access attributes that may not exist
+                ws = getattr(o_vc._connection, "ws", None)
+                if ws is not None:
+                    close_code = getattr(ws, "_close_code", None)
+                state = getattr(o_vc._connection, "state", None)
             except AttributeError:
                 # Connection state may not be available during certain disconnect scenarios
                 log.debug(
@@ -8134,6 +8262,10 @@ class MusicBot(discord.Client):
                             "Voice client reconnected to: %s",
                             current_channel.name,
                         )
+                        # Reset disconnect counter on successful reconnection
+                        async with self._voice_disconnect_lock:
+                            self._voice_disconnect_count = 0
+                            self._voice_disconnect_times = []
                         # Update player's voice client reference if player still exists
                         if player and not player.is_dead:
                             # Always update the player's voice client reference
@@ -8152,9 +8284,33 @@ class MusicBot(discord.Client):
                             log.debug(
                                 "Skipping voice client update: player is dead or does not exist"
                             )
+                            # Clean up the voice client to prevent resource leak
+                            try:
+                                await voice_client.disconnect()
+                                log.debug(
+                                    "Disconnected voice client for guild: %s (player is dead)",
+                                    o_guild.name,
+                                )
+                            except (AttributeError, TypeError) as e:
+                                log.warning(
+                                    "Failed to disconnect voice client: %s",
+                                    str(e),
+                                )
+                            except Exception as e:
+                                log.warning(
+                                    "Failed to disconnect voice client: %s",
+                                    str(e),
+                                    exc_info=True,
+                                )
+                except (AttributeError, TypeError, KeyError) as e:
+                    log.warning(
+                        "Attribute/Type/Key error getting voice client during disconnect: %s",
+                        str(e),
+                        exc_info=True,
+                    )
                 except Exception as e:
                     log.warning(
-                        "Failed to get voice client during disconnect: %s",
+                        "Unexpected error getting voice client during disconnect: %s",
                         str(e),
                         exc_info=True,
                     )
@@ -8238,9 +8394,15 @@ class MusicBot(discord.Client):
                         before.channel,
                         exc_info=True,
                     )
+                except (AttributeError, TypeError, KeyError) as e:
+                    log.warning(
+                        "Attribute/Type/Key error during reconnection: %s",
+                        str(e),
+                        exc_info=True,
+                    )
                 except Exception as e:
                     log.warning(
-                        "Error during reconnection: %s",
+                        "Unexpected error during reconnection: %s",
                         str(e),
                         exc_info=True,
                     )

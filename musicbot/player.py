@@ -566,11 +566,6 @@ class MusicPlayer(EventEmitter, Serializable):
             self.emit("error", player=self, entry=entry, ex=error)
             return
 
-        # if an error was set, report it and return...
-        if error:
-            self.emit("error", player=self, entry=entry, ex=error)
-            return
-
         # if a exception is found in the ffmpeg stderr stream, report it and return...
         if (
             isinstance(self._stderr_future, asyncio.Future)
@@ -769,26 +764,11 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 if not self.voice_client.is_connected():
                     log.warning(
-                        "Voice client not connected, attempting reconnection for entry: %s",
+                        "Voice client not connected for entry: %s, "
+                        "waiting for reconnection handler in bot",
                         entry.title,
                     )
-
-                    # Try to get a fresh voice client
-                    try:
-                        new_voice = await self.bot.get_voice_client(
-                            self.voice_client.channel
-                        )
-                        if not self.update_voice_client(new_voice):
-                            log.warning(
-                                "Failed to update voice client, waiting for reconnection"
-                            )
-                            return
-                    except Exception as e:
-                        log.warning(
-                            "Reconnection attempt failed, deferring to auto-pause handler: %s",
-                            e,
-                        )
-                        return
+                    return
 
                 # Log DAVE/E2EE status before playing
                 try:
