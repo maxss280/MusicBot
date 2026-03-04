@@ -126,6 +126,27 @@ class InMemoryAudioSource(AudioSource):
         """Get the number of remaining bytes to read."""
         return self._size - self._position
 
+    @property
+    def session_progress(self) -> float:
+        """Get playback progress time from this session only.
+
+        For InMemoryAudioSource, calculate from bytes read.
+        Each frame is 3840 bytes = 0.02 seconds at 48kHz stereo 16-bit.
+        """
+        # Calculate frames read from current position
+        bytes_read = self._position
+        frames_read = bytes_read / 3840
+        return frames_read * 0.02
+
+    @property
+    def progress(self) -> float:
+        """Get total playback progress time including start position."""
+        # Progress = initial position time + session progress
+        initial_position_seconds = 0
+        if hasattr(self, "_initial_position"):
+            initial_position_seconds = self._initial_position / 3840 * 0.02
+        return initial_position_seconds + self.session_progress
+
     def _apply_volume(self, frame: bytes) -> bytes:
         """Apply volume multiplier to PCM16 audio samples using NumPy."""
         if len(frame) % 2 != 0:
