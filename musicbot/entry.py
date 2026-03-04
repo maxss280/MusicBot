@@ -491,7 +491,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
             entry = cls(playlist, info, author=author, channel=channel)
             entry.filename = filename
             # Strip .json extension if present (yt-dlp may include it for metadata files)
-            if entry.filename.endswith(".json"):
+            if entry.filename and entry.filename.endswith(".json"):
                 entry.filename = entry.filename[:-5]
 
             # Set __expected_filename in info data so cache checks work correctly
