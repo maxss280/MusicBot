@@ -69,12 +69,10 @@ class InMemoryAudioSource(AudioSource):
         if start_position > 0:
             self._data.seek(start_position)
 
-        if USE_NUMPY and self._size >= 3840:
-            self._numpy_array = np.frombuffer(
-                self._data.getvalue(), dtype=np.int16
-            ).copy()
-        else:
-            self._numpy_array = None
+        # Note: We intentionally don't create a numpy array here.
+        # np.frombuffer() creates a view into the buffer that can become
+        # dangling if the original bytes object is garbage collected.
+        # The BytesIO object is sufficient for reading audio data.
 
     @property
     def volume(self) -> float:
@@ -96,6 +94,7 @@ class InMemoryAudioSource(AudioSource):
         # (48000 samples/sec * 0.02 sec * 2 channels * 2 bytes/sample)
         frame_size = 3840
         data = self._data.read(frame_size)
+        self._position = self._data.tell()
 
         if not data:
             self._closed = True
@@ -138,9 +137,14 @@ class InMemoryAudioSource(AudioSource):
         if self._volume == 0.0:
             return b"\x00" * len(frame)
 
-        if USE_NUMPY and len(frame) >= 4:
+        if USE_NUMPY and len(frame) >= 4 and len(frame) % 2 == 0:
             try:
-                arr = np.frombuffer(frame, dtype=np.int16)
+                # Use np.frombuffer().copy() to create an owned array instead of a view.
+                # np.frombuffer() creates a view into the bytes buffer that can become
+                # dangling if the original bytes object is garbage collected or modified.
+                # Using .copy() ensures the numpy array owns its own memory.
+                # Also check that frame length is even (PCM16 requires 2 bytes per sample).
+                arr = np.frombuffer(frame, dtype=np.int16).copy()
                 arr = arr * self._volume
                 arr = np.clip(arr, -32768, 32767)
                 return arr.astype(np.int16).tobytes()
