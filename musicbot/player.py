@@ -816,14 +816,6 @@ class MusicPlayer(EventEmitter, Serializable):
                         log.error("Failed to reload opus: %s", e, exc_info=True)
                         raise RuntimeError("Opus library is not loaded") from e
 
-                if not self.voice_client.is_connected():
-                    log.warning(
-                        "Voice client not connected for entry: %s, "
-                        "waiting for reconnection handler in bot",
-                        entry.title,
-                    )
-                    return
-
                 # Log DAVE/E2EE status before playing
                 try:
                     dave_version = getattr(
