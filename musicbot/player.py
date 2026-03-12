@@ -841,6 +841,15 @@ class MusicPlayer(EventEmitter, Serializable):
                 except AttributeError:
                     log.debug("Could not retrieve DAVE protocol information")
 
+                # Check voice connection before attempting playback
+                if not self.voice_client.is_connected():
+                    log.warning(
+                        "Voice client not connected for entry: %s, "
+                        "waiting for reconnection handler in bot",
+                        entry.title,
+                    )
+                    return
+
                 self.voice_client.play(self._source, after=self._playback_finished)
 
                 self._current_player = self.voice_client
