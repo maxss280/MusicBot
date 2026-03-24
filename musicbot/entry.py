@@ -62,6 +62,10 @@ class BasePlaylistEntry(Serializable):
         self._is_downloaded: bool = False
         self._waiting_futures: List[AsyncFuture] = []
         self._task_pool: Set[AsyncTask] = set()
+        self._aopt_eq: str = ""
+        self._playback_rate: Optional[float] = None
+        self._loudnorm_gain: float = 1.0  # Gain multiplier from loudnorm EQ
+        self.playlist: Optional["Playlist"] = None
 
     @property
     def start_time(self) -> float:
@@ -108,6 +112,34 @@ class BasePlaylistEntry(Serializable):
     def is_downloading(self) -> bool:
         """Get the entry's downloading status. Usually False."""
         return self._is_downloading
+
+    @property
+    def playback_speed(self) -> float:
+        """Get the current playback speed if one was set, or return 1.0 for normal playback."""
+        if self._playback_rate is not None:
+            return self._playback_rate
+        return self.playlist.bot.config.default_speed or 1.0
+
+    def set_playback_speed(self, speed: float) -> None:
+        """Set the playback speed to be used with ffmpeg -af:atempo filter."""
+        self._playback_rate = speed
+
+    @property
+    def aoptions(self) -> str:
+        """After input options for ffmpeg to use with this entry."""
+        aopts = f"{self._aopt_eq}"
+        # Set playback speed options if needed.
+        if self._playback_rate is not None or self.playback_speed != 1.0:
+            # Append to the EQ options if they are set.
+            if self._aopt_eq:
+                aopts = f"{self._aopt_eq},atempo={self.playback_speed:.3f}"
+            else:
+                aopts = f"-af atempo={self.playback_speed:.3f}"
+
+        if aopts:
+            return f"{aopts} -vn"
+
+        return "-vn"
 
     async def _download(self) -> None:
         """
@@ -166,6 +198,140 @@ class BasePlaylistEntry(Serializable):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}(url='{self.url}', title='{self.title}' file='{self.filename}')>"
+
+    async def get_mean_volume(self, input_file: str) -> str:
+        """
+        Attempt to calculate the mean volume of the `input_file` by using
+        output from ffmpeg to provide values which can be used by command
+        arguments sent to ffmpeg during playback.
+        """
+        log.debug("Calculating mean volume of:  %s", input_file)
+        ffmpeg_bin = shutil.which("ffmpeg")
+        if not ffmpeg_bin:
+            log.error("Could not locate ffmpeg on your path!")
+            return ""
+
+        # NOTE: this command should contain JSON, but I have no idea how to make
+        # ffmpeg spit out only the JSON.
+        ffmpeg_cmd = [
+            ffmpeg_bin,
+            "-i",
+            input_file,
+            "-af",
+            "loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:print_format=json",
+            "-f",
+            "null",
+            "/dev/null",
+            "-hide_banner",
+            "-nostats",
+        ]
+
+        raw_output = await run_command(ffmpeg_cmd)
+        output = raw_output.decode("utf-8")
+
+        i_matches = re.findall(r'"input_i" : "(-?([0-9]*\.[0-9]+))",', output)
+        if i_matches:
+            # log.debug("i_matches=%s", i_matches[0][0])
+            i_value = float(i_matches[0][0])
+        else:
+            log.debug("Could not parse I in normalise json.")
+            i_value = float(0)
+
+        lra_matches = re.findall(r'"input_lra" : "(-?([0-9]*\.[0-9]+))",', output)
+        if lra_matches:
+            # log.debug("lra_matches=%s", lra_matches[0][0])
+            lra_value = float(lra_matches[0][0])
+        else:
+            log.debug("Could not parse LRA in normalise json.")
+            lra_value = float(0)
+
+        tp_matches = re.findall(r'"input_tp" : "(-?([0-9]*\.[0-9]+))",', output)
+        if tp_matches:
+            # log.debug("tp_matches=%s", tp_matches[0][0])
+            tp_value = float(tp_matches[0][0])
+        else:
+            log.debug("Could not parse TP in normalise json.")
+            tp_value = float(0)
+
+        thresh_matches = re.findall(r'"input_thresh" : "(-?([0-9]*\.[0-9]+))",', output)
+        if thresh_matches:
+            # log.debug("thresh_matches=%s", thresh_matches[0][0])
+            thresh = float(thresh_matches[0][0])
+        else:
+            log.debug("Could not parse thresh in normalise json.")
+            thresh = float(0)
+
+        offset_matches = re.findall(r'"target_offset" : "(-?([0-9]*\.[0-9]+))', output)
+        if offset_matches:
+            # log.debug("offset_matches=%s", offset_matches[0][0])
+            offset = float(offset_matches[0][0])
+        else:
+            log.debug("Could not parse offset in normalise json.")
+            offset = float(0)
+
+        loudnorm_opts = (
+            "-af loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:"
+            f"measured_I={i_value}:"
+            f"measured_LRA={lra_value}:"
+            f"measured_TP={tp_value}:"
+            f"measured_thresh={thresh}:"
+            f"offset={offset}"
+        )
+        return loudnorm_opts
+
+    async def get_loudnorm_gain(
+        self, input_file: str, loudnorm_opts: Optional[str] = None
+    ) -> float:
+        """
+        Extract loudnorm offset in dB and convert to linear gain multiplier.
+        Returns the gain multiplier (1.0 = no change).
+        """
+        log.debug("Calculating loudnorm gain for: %s", input_file)
+
+        # Get the loudnorm options (reuse if already computed)
+        if loudnorm_opts is None:
+            loudnorm_opts = await self.get_mean_volume(input_file)
+
+        # Extract offset from loudnorm_opts string
+        offset_match = re.search(r"offset=([\-]?\d+\.?\d*)", loudnorm_opts)
+        if offset_match:
+            offset_db = float(offset_match.group(1))
+            # Convert dB to linear gain: gain = 10^(offset/20)
+            gain = 10 ** (offset_db / 20)
+            log.debug("Loudnorm offset: %.2f dB, gain: %.4f", offset_db, gain)
+            return gain
+        else:
+            log.warning("Could not extract loudnorm offset, using 1.0 (no gain)")
+            return 1.0
+
+    async def _apply_equalization(self) -> None:
+        """
+        Apply experimental equalization if enabled in config.
+        Calculates loudnorm EQ and gain, storing results in _aopt_eq and _loudnorm_gain.
+        """
+        if not self.playlist.bot.config.use_experimental_equalization:
+            return
+
+        if not self.filename:
+            log.debug("Skipping equalization, no filename available.")
+            return
+
+        try:
+            # Get loudnorm options once and reuse for both EQ and gain
+            loudnorm_opts = await self.get_mean_volume(self.filename)
+            self._aopt_eq = loudnorm_opts
+            if self._aopt_eq:
+                self._loudnorm_gain = await self.get_loudnorm_gain(
+                    self.filename, loudnorm_opts
+                )
+
+        # Unfortunate evil that we abide for now...
+        except Exception:  # pylint: disable=broad-exception-caught
+            log.error(
+                "There as a problem with working out EQ, likely caused by a strange installation of FFmpeg. "
+                "This has not impacted the ability for the bot to work, but will mean your tracks will not be equalised.",
+                exc_info=True,
+            )
 
 
 async def run_command(command: List[str]) -> bytes:
@@ -294,8 +460,6 @@ class URLPlaylistEntry(BasePlaylistEntry):
         super().__init__()
 
         self._start_time: Optional[float] = None
-        self._playback_rate: Optional[float] = None
-        self._loudnorm_gain: float = 1.0  # Gain multiplier from loudnorm EQ
         self.playlist: "Playlist" = playlist
         self.downloader: "Downloader" = playlist.bot.downloader
         self.filecache: "AudioFileCache" = playlist.bot.filecache
@@ -312,25 +476,6 @@ class URLPlaylistEntry(BasePlaylistEntry):
 
         self.author: Optional["discord.Member"] = author
         self.channel: Optional[GuildMessageableChannels] = channel
-
-        self._aopt_eq: str = ""
-
-    @property
-    def aoptions(self) -> str:
-        """After input options for ffmpeg to use with this entry."""
-        aopts = f"{self._aopt_eq}"
-        # Set playback speed options if needed.
-        if self._playback_rate is not None or self.playback_speed != 1.0:
-            # Append to the EQ options if they are set.
-            if self._aopt_eq:
-                aopts = f"{self._aopt_eq},atempo={self.playback_speed:.3f}"
-            else:
-                aopts = f"-af atempo={self.playback_speed:.3f}"
-
-        if aopts:
-            return f"{aopts} -vn"
-
-        return "-vn"
 
     @property
     def boptions(self) -> str:
@@ -515,17 +660,6 @@ class URLPlaylistEntry(BasePlaylistEntry):
         """Sets a start time in seconds to use with the ffmpeg -ss flag."""
         self._start_time = start_time
 
-    @property
-    def playback_speed(self) -> float:
-        """Get the current playback speed if one was set, or return 1.0 for normal playback."""
-        if self._playback_rate is not None:
-            return self._playback_rate
-        return self.playlist.bot.config.default_speed or 1.0
-
-    def set_playback_speed(self, speed: float) -> None:
-        """Set the playback speed to be used with ffmpeg -af:atempo filter."""
-        self._playback_rate = speed
-
     async def _ensure_entry_info(self) -> None:
         """helper to ensure this entry object has critical information"""
 
@@ -615,7 +749,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
                                     self.title,
                                 )
                                 # Decode to PCM16, applying loudnorm EQ if enabled
-                                loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                                loudnorm_gain = self._loudnorm_gain
                                 pcm_data = await decode_to_pcm16(
                                     self.filename, loudnorm_gain
                                 )
@@ -686,23 +820,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
                 }
                 self.filecache.save_metadata(self.filename, metadata)
 
-            if self.playlist.bot.config.use_experimental_equalization:
-                try:
-                    # Get loudnorm options once and reuse for both EQ and gain
-                    loudnorm_opts = await self.get_mean_volume(self.filename)
-                    self._aopt_eq = loudnorm_opts
-                    if self._aopt_eq:
-                        self._loudnorm_gain = await self.get_loudnorm_gain(
-                            self.filename, loudnorm_opts
-                        )
-
-                # Unfortunate evil that we abide for now...
-                except Exception:  # pylint: disable=broad-exception-caught
-                    log.error(
-                        "There as a problem with working out EQ, likely caused by a strange installation of FFmpeg. "
-                        "This has not impacted the ability for the bot to work, but will mean your tracks will not be equalised.",
-                        exc_info=True,
-                    )
+            await self._apply_equalization()
 
             # Trigger ready callbacks.
             self._for_each_future(lambda future: future.set_result(self))
@@ -765,111 +883,6 @@ class URLPlaylistEntry(BasePlaylistEntry):
             log.exception("ffprobe could not be executed for some reason.")
 
         return None
-
-    async def get_mean_volume(self, input_file: str) -> str:
-        """
-        Attempt to calculate the mean volume of the `input_file` by using
-        output from ffmpeg to provide values which can be used by command
-        arguments sent to ffmpeg during playback.
-        """
-        log.debug("Calculating mean volume of:  %s", input_file)
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if not ffmpeg_bin:
-            log.error("Could not locate ffmpeg on your path!")
-            return ""
-
-        # NOTE: this command should contain JSON, but I have no idea how to make
-        # ffmpeg spit out only the JSON.
-        ffmpeg_cmd = [
-            ffmpeg_bin,
-            "-i",
-            input_file,
-            "-af",
-            "loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:print_format=json",
-            "-f",
-            "null",
-            "/dev/null",
-            "-hide_banner",
-            "-nostats",
-        ]
-
-        raw_output = await run_command(ffmpeg_cmd)
-        output = raw_output.decode("utf-8")
-
-        i_matches = re.findall(r'"input_i" : "(-?([0-9]*\.[0-9]+))",', output)
-        if i_matches:
-            # log.debug("i_matches=%s", i_matches[0][0])
-            i_value = float(i_matches[0][0])
-        else:
-            log.debug("Could not parse I in normalise json.")
-            i_value = float(0)
-
-        lra_matches = re.findall(r'"input_lra" : "(-?([0-9]*\.[0-9]+))",', output)
-        if lra_matches:
-            # log.debug("lra_matches=%s", lra_matches[0][0])
-            lra_value = float(lra_matches[0][0])
-        else:
-            log.debug("Could not parse LRA in normalise json.")
-            lra_value = float(0)
-
-        tp_matches = re.findall(r'"input_tp" : "(-?([0-9]*\.[0-9]+))",', output)
-        if tp_matches:
-            # log.debug("tp_matches=%s", tp_matches[0][0])
-            tp_value = float(tp_matches[0][0])
-        else:
-            log.debug("Could not parse TP in normalise json.")
-            tp_value = float(0)
-
-        thresh_matches = re.findall(r'"input_thresh" : "(-?([0-9]*\.[0-9]+))",', output)
-        if thresh_matches:
-            # log.debug("thresh_matches=%s", thresh_matches[0][0])
-            thresh = float(thresh_matches[0][0])
-        else:
-            log.debug("Could not parse thresh in normalise json.")
-            thresh = float(0)
-
-        offset_matches = re.findall(r'"target_offset" : "(-?([0-9]*\.[0-9]+))', output)
-        if offset_matches:
-            # log.debug("offset_matches=%s", offset_matches[0][0])
-            offset = float(offset_matches[0][0])
-        else:
-            log.debug("Could not parse offset in normalise json.")
-            offset = float(0)
-
-        loudnorm_opts = (
-            "-af loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:"
-            f"measured_I={i_value}:"
-            f"measured_LRA={lra_value}:"
-            f"measured_TP={tp_value}:"
-            f"measured_thresh={thresh}:"
-            f"offset={offset}"
-        )
-        return loudnorm_opts
-
-    async def get_loudnorm_gain(
-        self, input_file: str, loudnorm_opts: Optional[str] = None
-    ) -> float:
-        """
-        Extract loudnorm offset in dB and convert to linear gain multiplier.
-        Returns the gain multiplier (1.0 = no change).
-        """
-        log.debug("Calculating loudnorm gain for: %s", input_file)
-
-        # Get the loudnorm options (reuse if already computed)
-        if loudnorm_opts is None:
-            loudnorm_opts = await self.get_mean_volume(input_file)
-
-        # Extract offset from loudnorm_opts string
-        offset_match = re.search(r"offset=([\-]?\d+\.?\d*)", loudnorm_opts)
-        if offset_match:
-            offset_db = float(offset_match.group(1))
-            # Convert dB to linear gain: gain = 10^(offset/20)
-            gain = 10 ** (offset_db / 20)
-            log.debug("Loudnorm offset: %.2f dB, gain: %.4f", offset_db, gain)
-            return gain
-        else:
-            log.warning("Could not extract loudnorm offset, using 1.0 (no gain)")
-            return 1.0
 
     async def _really_download(self) -> None:
         """
@@ -940,7 +953,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
                 try:
                     log.debug("Loading audio into memory: %s", self.title)
                     # Decode to PCM16, applying loudnorm EQ if enabled
-                    loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                    loudnorm_gain = self._loudnorm_gain
                     pcm_data = await decode_to_pcm16(self.filename, loudnorm_gain)
                     if pcm_data:
                         self.memory_data = pcm_data
@@ -1186,8 +1199,6 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
         super().__init__()
 
         self._start_time: Optional[float] = None
-        self._playback_rate: Optional[float] = None
-        self._loudnorm_gain: float = 1.0  # Gain multiplier from loudnorm EQ
         self.playlist: "Playlist" = playlist
 
         self.info: YtdlpResponseDict = info
@@ -1200,25 +1211,6 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
         self.author: Optional["discord.Member"] = author
         self.channel: Optional[GuildMessageableChannels] = channel
-
-        self._aopt_eq: str = ""
-
-    @property
-    def aoptions(self) -> str:
-        """After input options for ffmpeg to use with this entry."""
-        aopts = f"{self._aopt_eq}"
-        # Set playback speed options if needed.
-        if self._playback_rate is not None or self.playback_speed != 1.0:
-            # Append to the EQ options if they are set.
-            if self._aopt_eq:
-                aopts = f"{self._aopt_eq},atempo={self.playback_speed:.3f}"
-            else:
-                aopts = f"-af atempo={self.playback_speed:.3f}"
-
-        if aopts:
-            return f"{aopts} -vn"
-
-        return "-vn"
 
     @property
     def boptions(self) -> str:
@@ -1394,17 +1386,6 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
         """Sets a start time in seconds to use with the ffmpeg -ss flag."""
         self._start_time = start_time
 
-    @property
-    def playback_speed(self) -> float:
-        """Get the current playback speed if one was set, or return 1.0 for normal playback."""
-        if self._playback_rate is not None:
-            return self._playback_rate
-        return self.playlist.bot.config.default_speed or 1.0
-
-    def set_playback_speed(self, speed: float) -> None:
-        """Set the playback speed to be used with ffmpeg -af:atempo filter."""
-        self._playback_rate = speed
-
     async def _download(self) -> None:
         """
         Handle readying the local media file, by extracting info like duration
@@ -1441,23 +1422,7 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
                         self.filename,
                     )
 
-            if self.playlist.bot.config.use_experimental_equalization:
-                try:
-                    # Get loudnorm options once and reuse for both EQ and gain
-                    loudnorm_opts = await self.get_mean_volume(self.filename)
-                    self._aopt_eq = loudnorm_opts
-                    if self._aopt_eq:
-                        self._loudnorm_gain = await self.get_loudnorm_gain(
-                            self.filename, loudnorm_opts
-                        )
-
-                # Unfortunate evil that we abide for now...
-                except Exception:  # pylint: disable=broad-exception-caught
-                    log.error(
-                        "There as a problem with working out EQ, likely caused by a strange installation of FFmpeg. "
-                        "This has not impacted the ability for the bot to work, but will mean your tracks will not be equalised.",
-                        exc_info=True,
-                    )
+            await self._apply_equalization()
 
             # Trigger ready callbacks.
             self._is_downloaded = True
@@ -1477,7 +1442,7 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
                     try:
                         log.debug("Loading local file into memory: %s", self.title)
                         # Decode to PCM16, applying loudnorm EQ if enabled
-                        loudnorm_gain = getattr(self, "_loudnorm_gain", 1.0)
+                        loudnorm_gain = self._loudnorm_gain
                         pcm_data = await decode_to_pcm16(self.filename, loudnorm_gain)
                         if pcm_data:
                             self.memory_data = pcm_data
@@ -1569,83 +1534,3 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
             log.exception("ffprobe could not be executed for some reason.")
 
         return None
-
-    async def get_mean_volume(self, input_file: str) -> str:
-        """
-        Attempt to calculate the mean volume of the `input_file` by using
-        output from ffmpeg to provide values which can be used by command
-        arguments sent to ffmpeg during playback.
-        """
-        log.debug("Calculating mean volume of:  %s", input_file)
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if not ffmpeg_bin:
-            log.error("Could not locate ffmpeg on your path!")
-            return ""
-
-        # NOTE: this command should contain JSON, but I have no idea how to make
-        # ffmpeg spit out only the JSON.
-        ffmpeg_cmd = [
-            ffmpeg_bin,
-            "-i",
-            input_file,
-            "-af",
-            "loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:print_format=json",
-            "-f",
-            "null",
-            "/dev/null",
-            "-hide_banner",
-            "-nostats",
-        ]
-
-        raw_output = await run_command(ffmpeg_cmd)
-        output = raw_output.decode("utf-8")
-
-        i_matches = re.findall(r'"input_i" : "(-?([0-9]*\.[0-9]+))",', output)
-        if i_matches:
-            # log.debug("i_matches=%s", i_matches[0][0])
-            i_value = float(i_matches[0][0])
-        else:
-            log.debug("Could not parse I in normalise json.")
-            i_value = float(0)
-
-        lra_matches = re.findall(r'"input_lra" : "(-?([0-9]*\.[0-9]+))",', output)
-        if lra_matches:
-            # log.debug("lra_matches=%s", lra_matches[0][0])
-            lra_value = float(lra_matches[0][0])
-        else:
-            log.debug("Could not parse LRA in normalise json.")
-            lra_value = float(0)
-
-        tp_matches = re.findall(r'"input_tp" : "(-?([0-9]*\.[0-9]+))",', output)
-        if tp_matches:
-            # log.debug("tp_matches=%s", tp_matches[0][0])
-            tp_value = float(tp_matches[0][0])
-        else:
-            log.debug("Could not parse TP in normalise json.")
-            tp_value = float(0)
-
-        thresh_matches = re.findall(r'"input_thresh" : "(-?([0-9]*\.[0-9]+))",', output)
-        if thresh_matches:
-            # log.debug("thresh_matches=%s", thresh_matches[0][0])
-            thresh = float(thresh_matches[0][0])
-        else:
-            log.debug("Could not parse thresh in normalise json.")
-            thresh = float(0)
-
-        offset_matches = re.findall(r'"target_offset" : "(-?([0-9]*\.[0-9]+))', output)
-        if offset_matches:
-            # log.debug("offset_matches=%s", offset_matches[0][0])
-            offset = float(offset_matches[0][0])
-        else:
-            log.debug("Could not parse offset in normalise json.")
-            offset = float(0)
-
-        loudnorm_opts = (
-            "-af loudnorm=I=-24.0:LRA=7.0:TP=-2.0:linear=true:"
-            f"measured_I={i_value}:"
-            f"measured_LRA={lra_value}:"
-            f"measured_TP={tp_value}:"
-            f"measured_thresh={thresh}:"
-            f"offset={offset}"
-        )
-        return loudnorm_opts
