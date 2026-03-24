@@ -1096,7 +1096,7 @@ class StreamPlaylistEntry(BasePlaylistEntry):
         if not vernum:
             log.error("Entry data is missing version number, cannot deserialize.")
             return None
-        if vernum != URLPlaylistEntry.SERIAL_VERSION:
+        if vernum != StreamPlaylistEntry.SERIAL_VERSION:
             log.error("Entry data has the wrong version number, cannot deserialize.")
             return None
 
@@ -1307,10 +1307,7 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
 
         try:
             info = YtdlpResponseDict(raw_json["info"])
-            downloaded = (
-                raw_json["downloaded"] if playlist.bot.config.save_videos else False
-            )
-            filename = raw_json["filename"] if downloaded else None
+            filename = raw_json.get("filename", None)
 
             channel_id = raw_json.get("channel_id", None)
             if channel_id:
