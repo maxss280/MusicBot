@@ -118,7 +118,9 @@ class BasePlaylistEntry(Serializable):
         """Get the current playback speed if one was set, or return 1.0 for normal playback."""
         if self._playback_rate is not None:
             return self._playback_rate
-        return self.playlist.bot.config.default_speed or 1.0
+        if self.playlist is not None:
+            return self.playlist.bot.config.default_speed or 1.0
+        return 1.0
 
     def set_playback_speed(self, speed: float) -> None:
         """Set the playback speed to be used with ffmpeg -af:atempo filter."""
@@ -197,7 +199,7 @@ class BasePlaylistEntry(Serializable):
         return id(self)
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__}(url='{self.url}', title='{self.title}' file='{self.filename}')>"
+        return f"<{type(self).__name__}(url='{self.url}', title='{self.title}', file='{self.filename}')>"
 
     async def get_mean_volume(self, input_file: str) -> str:
         """
@@ -309,7 +311,10 @@ class BasePlaylistEntry(Serializable):
         Apply experimental equalization if enabled in config.
         Calculates loudnorm EQ and gain, storing results in _aopt_eq and _loudnorm_gain.
         """
-        if not self.playlist.bot.config.use_experimental_equalization:
+        if (
+            self.playlist is None
+            or not self.playlist.bot.config.use_experimental_equalization
+        ):
             return
 
         if not self.filename:
@@ -328,7 +333,7 @@ class BasePlaylistEntry(Serializable):
         # Unfortunate evil that we abide for now...
         except Exception:  # pylint: disable=broad-exception-caught
             log.error(
-                "There as a problem with working out EQ, likely caused by a strange installation of FFmpeg. "
+                "There was a problem with working out EQ, likely caused by a strange installation of FFmpeg. "
                 "This has not impacted the ability for the bot to work, but will mean your tracks will not be equalised.",
                 exc_info=True,
             )
@@ -862,7 +867,7 @@ class URLPlaylistEntry(BasePlaylistEntry):
         ffprobe_cmd = [
             ffprobe_bin,
             "-i",
-            self.filename,
+            input_file,
             "-show_entries",
             "format=duration",
             "-v",
@@ -1510,7 +1515,7 @@ class LocalFilePlaylistEntry(BasePlaylistEntry):
         ffprobe_cmd = [
             ffprobe_bin,
             "-i",
-            self.filename,
+            input_file,
             "-show_entries",
             "format=duration",
             "-v",
