@@ -126,7 +126,7 @@ class AudioFileCache:
             log.warning("Failed to delete cache file:  %s", path, exc_info=True)
             return False
 
-    async def safe_delete(self, path: Union[str, pathlib.Path]) -> bool:
+    def safe_delete(self, path: Union[str, pathlib.Path]) -> bool:
         """
         Robust file deletion with retry logic for 'file in use' scenarios.
         Accepts either a string path or pathlib.Path.
@@ -138,7 +138,7 @@ class AudioFileCache:
             path = pathlib.Path(path)
         for _ in range(3):
             try:
-                await asyncio.to_thread(path.unlink)
+                path.unlink()
                 log.debug("File deleted:  %s", path)
                 return True
             except FileNotFoundError:
@@ -146,7 +146,7 @@ class AudioFileCache:
             except PermissionError as e:
                 if e.errno == 32:
                     log.warning("Cannot delete %s, file is in use, retrying...", path)
-                    await asyncio.sleep(0.1)
+                    time.sleep(0.1)
                 else:
                     log.warning(
                         "Cannot delete %s due to a permissions error.",
