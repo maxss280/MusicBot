@@ -89,7 +89,7 @@ class InMemoryAudioSource(AudioSource):
         self._volume = max(0.0, min(value, 2.0))
 
     def read(self) -> bytes:
-        """Read 20ms of audio data (3840 bytes for 48kHz stereo 16-bit PCM)."""
+        """Read 20ms of audio data (AUDIO_BYTES_PER_FRAME bytes for 48kHz stereo 16-bit PCM)."""
         if self._closed:
             return b""
 
@@ -570,10 +570,18 @@ class MusicPlayer(EventEmitter, Serializable):
                 is_disconnect_error = True
                 log.debug("Detected disconnect error pattern in: '%s'", error_str)
 
-        # Also check if player was auto-paused - always preserve state in this case
+        # Also check if player was auto-paused - preserve state only if voice is disconnected
         # This handles: channel empty -> auto-pause -> disconnect -> should resume
-        if hasattr(self, "paused_auto") and self.paused_auto:
-            log.debug("Player was auto-paused, treating as disconnect error")
+        # But does NOT treat normal song completion as disconnect when channel has users
+        if (
+            hasattr(self, "paused_auto")
+            and self.paused_auto
+            and self.voice_client
+            and not self.voice_client.is_connected()
+        ):
+            log.debug(
+                "Player was auto-paused and voice is disconnected, treating as disconnect error"
+            )
             is_disconnect_error = True
 
         log.debug(
@@ -745,7 +753,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 # Determine audio source: use in-memory if available and config is enabled
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     # Calculate position to resume from (in bytes)
-                    # For 48kHz stereo 16-bit: 3840 bytes = 0.02 seconds (20ms frame)
+                    # For 48kHz stereo 16-bit: AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds
                     # Position in bytes = progress_seconds * 48000 * 2 * 2
                     # Simplified: progress_seconds * 192000 = bytes
                     progress_bytes = 0
@@ -855,6 +863,12 @@ class MusicPlayer(EventEmitter, Serializable):
                 self.state = MusicPlayerState.PLAYING
                 self._current_entry = entry
 
+                # Reset paused_auto when starting new playback
+                # This prevents stale paused_auto state from causing issues
+                if hasattr(self, "paused_auto") and self.paused_auto:
+                    log.debug("Resetting paused_auto on new playback start")
+                    self.paused_auto = False
+
                 # Only create stderr thread for FFmpeg-based sources
                 # InMemoryAudioSource doesn't use FFmpeg, so no stderr to read
                 if stderr_io is not None:
@@ -916,7 +930,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 )
             else:
                 log.debug("Deleting file:  %s", os.path.relpath(entry.filename))
-                self.bot.filecache.safe_delete(entry.filename)
+                await self.bot.filecache.safe_delete(entry.filename)
 
     def __json__(self) -> Dict[str, Any]:
         return self._enclose_json(

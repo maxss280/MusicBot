@@ -237,6 +237,115 @@
             color: inherit;
         }
         
+        /* Additional Styles for Documentation */
+        .intro {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box p {
+            margin: 0;
+            color: #856404;
+        }
+        
+        .note-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .note-box p {
+            margin: 0;
+            color: #0c5460;
+        }
+        
+        .example-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .security-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .security-list h4 {
+            color: #1a1c23;
+            margin-bottom: 10px;
+        }
+        
+        .security-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .security-list li {
+            margin: 5px 0;
+        }
+        
+        .quick-ref {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .quick-ref p {
+            margin: 8px 0;
+        }
+        
+        .doc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .doc-table th,
+        .doc-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .doc-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .doc-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .doc-table tr:hover {
+            background: #e9ecef;
+        }
+        
+        .screenshot-placeholder {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            border-radius: 4px;
+            color: #6c757d;
+        }
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .container {
@@ -258,6 +367,10 @@
                 border-radius: 0;
                 box-shadow: none;
             }
+            
+            .security-list {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -267,6 +380,18 @@
             <div class="sidebar-header">
                 <h1>MusicBot Docs</h1>
                 <input type="text" class="search-box" placeholder="Search documentation...">
+            </div>
+
+            <div class="category">
+                <div class="category-header">
+                    <span class="category-name">Getting Started</span>
+                    <span class="category-icon">▶</span>
+                </div>
+                <div class="category-content">
+                    <div class="doc-item" data-target="docker-quickstart">Docker Quickstart Guide</div>
+                    <div class="doc-item" data-target="mandatory-params">Mandatory Configuration Parameters</div>
+                    <div class="doc-item" data-target="discord-token-guide">Getting Discord Bot Token</div>
+                </div>
             </div>
 
             <div class="category">
@@ -429,10 +554,12 @@
                 </div>
 
                 <div class="doc-section" id="content">
-                    <p>This documentation covers all classes, methods, and components of the MusicBot project. Use the sidebar to navigate between different categories.</p>
+                    <h2>MusicBot Documentation</h2>
+                    <p class="intro">Welcome to the comprehensive MusicBot documentation. Use the sidebar to navigate between different categories.</p>
                     
                     <h3>Documentation Structure</h3>
                     <ul>
+                        <li><strong>Getting Started</strong> - Docker quickstart, mandatory parameters, Discord token setup</li>
                         <li><strong>Core Module</strong> - Main MusicBot class and bot initialization</li>
                         <li><strong>Music Player</strong> - MusicPlayer class for audio playback</li>
                         <li><strong>Playlist</strong> - Playlist management and entry types</li>
@@ -447,6 +574,13 @@
                         <li><strong>Aliases</strong> - Command aliasing</li>
                         <li><strong>Opus Loader</strong> - Opus library loading</li>
                         <li><strong>Configuration Files</strong> - Config file structure and options</li>
+                    </ul>
+                    
+                    <h3>Quick Links</h3>
+                    <ul>
+                        <li><a href="#" onclick="document.querySelector('[data-target=&quot;docker-quickstart&quot;]').click(); return false;">Docker Quickstart Guide</a> - Get started with Docker</li>
+                        <li><a href="#" onclick="document.querySelector('[data-target=&quot;mandatory-params&quot;]').click(); return false;">Mandatory Parameters</a> - Required configuration settings</li>
+                        <li><a href="#" onclick="document.querySelector('[data-target=&quot;discord-token-guide&quot;]').click(); return false;">Discord Bot Token</a> - How to get your API token</li>
                     </ul>
                 </div>
             </div>
@@ -521,6 +655,520 @@
 
         // Document content mapping
         const docs = {
+            'docker-quickstart': {
+                title: 'Docker Quickstart Guide',
+                meta: 'Getting started with MusicBot using Docker',
+                content: `
+                    <div class="doc-section">
+                        <h2>Docker Quickstart Guide</h2>
+                        <p class="intro">Running MusicBot with Docker is the easiest way to get started without installing Python dependencies manually. This guide will walk you through the entire process.</p>
+                        
+                        <h3>Prerequisites</h3>
+                        <p>Before you begin, ensure you have Docker installed on your system:</p>
+                        <ul>
+                            <li><strong>Linux:</strong> <a href="https://docs.docker.com/install/linux/docker-ce/ubuntu/" target="_blank">Install Docker CE</a></li>
+                            <li><strong>Windows:</strong> <a href="https://docs.docker.com/desktop/install/windows-install/" target="_blank">Download Docker Desktop</a></li>
+                            <li><strong>macOS:</strong> <a href="https://docs.docker.com/desktop/install/mac-install/" target="_blank">Download Docker Desktop</a></li>
+                        </ul>
+                        
+                        <p class="note"><strong>Verify Installation:</strong> Run <code>docker --version</code> in your terminal. You should see Docker version 20.10 or higher.</p>
+                        
+                        <h3>Step 1: Prepare Configuration Files</h3>
+                        <p>Create a directory for your MusicBot Docker setup:</p>
+                        <pre><code>mkdir musicbot-docker
+cd musicbot-docker</code></pre>
+                        
+                        <p>Copy the configuration files from the MusicBot repository:</p>
+                        <pre><code>curl -o options.ini https://raw.githubusercontent.com/maxss280/MusicBot/master/config/options.ini
+curl -o permissions.ini https://raw.githubusercontent.com/maxss280/MusicBot/master/config/permissions.ini
+curl -o autoplaylist.txt https://raw.githubusercontent.com/maxss280/MusicBot/master/config/autoplaylist.txt</code></pre>
+                        
+                        <p class="warning"><strong>Important:</strong> Edit <code>options.ini</code> before running the container. At minimum, you must set:</p>
+                        <ul>
+                            <li><code>Token</code> - Your Discord bot token (see <a href="#discord-token-guide">Credentials section</a>)</li>
+                            <li><code>OwnerID</code> - Your Discord user ID</li>
+                            <li><code>CommandPrefix</code> - Your desired command prefix (e.g., <code>!</code>)</li>
+                        </ul>
+                        
+                        <h3>Step 2: Build the Docker Image</h3>
+                        <p>Download the MusicBot source and create a Dockerfile:</p>
+                        <pre><code>curl -o Dockerfile https://raw.githubusercontent.com/maxss280/MusicBot/master/Dockerfile</code></pre>
+                        
+                        <p>Build the Docker image:</p>
+                        <pre><code>docker build -t musicbot .</code></pre>
+                        
+                        <p>This may take a few minutes as it installs all dependencies.</p>
+                        
+                        <h3>Step 3: Run the Container</h3>
+                        <p><strong>Basic run command:</strong></p>
+                        <pre><code>docker run -it --name musicbot \\
+  -v $(pwd)/options.ini:/musicbot/config/options.ini \\
+  -v $(pwd)/permissions.ini:/musicbot/config/permissions.ini \\
+  -v $(pwd)/autoplaylist.txt:/musicbot/config/autoplaylist.txt \\
+  -v $(pwd)/audio_cache:/musicbot/audio_cache \\
+  -v $(pwd)/data:/musicbot/data \\
+  -v $(pwd)/logs:/musicbot/logs \\
+  musicbot</code></pre>
+                        
+                        <p><strong>Windows (PowerShell) version:</strong></p>
+                        <pre><code>docker run -it --name musicbot \`
+  -v \${PWD}/options.ini:/musicbot/config/options.ini \`
+  -v \${PWD}/permissions.ini:/musicbot/config/permissions.ini \`
+  -v \${PWD}/autoplaylist.txt:/musicbot/config/autoplaylist.txt \`
+  -v \${PWD}/audio_cache:/musicbot/audio_cache \`
+  -v \${PWD}/data:/musicbot/data \`
+  -v \${PWD}/logs:/musicbot/logs \`
+  musicbot</code></pre>
+                        
+                        <h4>Docker Run Parameters Explained</h4>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>-it</code></td>
+                                    <td>Interactive mode with TTY (required for bot to run properly)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>--name musicbot</code></td>
+                                    <td>Names your container "musicbot" for easy reference</td>
+                                </tr>
+                                <tr>
+                                    <td><code>-v $(pwd)/options.ini:/musicbot/config/options.ini</code></td>
+                                    <td>Mounts your config file into the container</td>
+                                </tr>
+                                <tr>
+                                    <td><code>-v $(pwd)/audio_cache:/musicbot/audio_cache</code></td>
+                                    <td>Persists downloaded audio files between container restarts</td>
+                                </tr>
+                                <tr>
+                                    <td><code>-v $(pwd)/data:/musicbot/data</code></td>
+                                    <td>Persists guild data and queue state</td>
+                                </tr>
+                                <tr>
+                                    <td><code>-v $(pwd)/logs:/musicbot/logs</code></td>
+                                    <td>Saves log files to your host machine</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Step 4: Docker Compose (Alternative)</h3>
+                        <p>For easier management, create a <code>docker-compose.yml</code> file:</p>
+                        <pre><code>version: '3.8'
+
+services:
+  musicbot:
+    build: .
+    container_name: musicbot
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./options.ini:/musicbot/config/options.ini
+      - ./permissions.ini:/musicbot/config/permissions.ini
+      - ./autoplaylist.txt:/musicbot/config/autoplaylist.txt
+      - ./audio_cache:/musicbot/audio_cache
+      - ./data:/musicbot/data
+      - ./logs:/musicbot/logs
+    restart: unless-stopped</code></pre>
+                        
+                        <p><strong>Start with Docker Compose:</strong></p>
+                        <pre><code>docker-compose up -d</code></pre>
+                        
+                        <p><strong>View logs:</strong></p>
+                        <pre><code>docker-compose logs -f</code></pre>
+                        
+                        <p><strong>Stop the bot:</strong></p>
+                        <pre><code>docker-compose down</code></pre>
+                        
+                        <h3>Managing the Container</h3>
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Command</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>docker start musicbot</code></td>
+                                    <td>Start a stopped container</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docker stop musicbot</code></td>
+                                    <td>Stop the running bot gracefully</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docker restart musicbot</code></td>
+                                    <td>Restart the bot</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docker logs musicbot</code></td>
+                                    <td>View bot logs</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docker logs -f musicbot</code></td>
+                                    <td>Follow logs in real-time</td>
+                                </tr>
+                                <tr>
+                                    <td><code>docker exec -it musicbot bash</code></td>
+                                    <td>Access container shell (for debugging)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Troubleshooting</h3>
+                        
+                        <h4>Bot won't start / Crashes immediately</h4>
+                        <ul>
+                            <li>Check your <code>options.ini</code> configuration - ensure Token and OwnerID are set correctly</li>
+                            <li>View logs: <code>docker logs musicbot</code></li>
+                            <li>Verify your bot has the <code>Bot</code> privilege enabled in Discord Developer Portal</li>
+                        </ul>
+                        
+                        <h4>"Permission denied" errors</h4>
+                        <ul>
+                            <li>On Linux, ensure your user has permission to access Docker: <code>sudo usermod -aG docker $USER</code></li>
+                            <li>Restart your terminal after adding to docker group</li>
+                        </ul>
+                        
+                        <h4>Volume mount issues</h4>
+                        <ul>
+                            <li>On Windows, ensure Docker has access to your drive (check Docker Desktop settings)</li>
+                            <li>Use absolute paths if relative paths don't work</li>
+                            <li>Verify files exist before running: <code>ls -la options.ini</code></li>
+                        </ul>
+                        
+                        <h4>Bot disconnects from voice channels</h4>
+                        <ul>
+                            <li>Ensure your bot has "Connect" and "Speak" permissions in the voice channel</li>
+                            <li>Check if AutoPause is enabled in options.ini - it may pause when no one is in voice</li>
+                            <li>Review logs for voice connection errors</li>
+                        </ul>
+                        
+                        <h3>Updating the Bot</h3>
+                        <p>To update to the latest version:</p>
+                        <pre><code># Pull latest source and rebuild
+git pull  # If using git clone
+docker-compose build --no-cache
+docker-compose up -d</code></pre>
+                        
+                        <p class="note"><strong>Note:</strong> Your configuration files and data are preserved in volume mounts, so updates won't lose your settings or queue data.</p>
+                    </div>
+                `
+            },
+            
+            'mandatory-params': {
+                title: 'Mandatory Configuration Parameters',
+                meta: 'Required settings in options.ini for MusicBot to function',
+                content: `
+                    <div class="doc-section">
+                        <h2>Mandatory Configuration Parameters</h2>
+                        <p class="intro">The following parameters MUST be configured in <code>config/options.ini</code> for MusicBot to start and function properly. Without these settings, the bot will fail to connect or operate.</p>
+                        
+                        <div class="warning-box">
+                            <p><strong>⚠️ Critical Settings:</strong> These three parameters are absolutely required. The bot will not work without them.</p>
+                        </div>
+                        
+                        <h3>1. Credentials.Token</h3>
+                        <p><strong>What it does:</strong> This is your Discord bot account's authentication token that allows the bot to connect to Discord's servers and operate as a user account.</p>
+                        
+                        <p><strong>How to get/set the value:</strong></p>
+                        <ol>
+                            <li>Go to <a href="https://discordapp.com/developers/applications/" target="_blank">Discord Developer Portal</a></li>
+                            <li>Create a new application (or select existing one)</li>
+                            <li>Navigate to the "Bot" section</li>
+                            <li>Click "Reset Token" or "Copy Token" to reveal your bot's token</li>
+                            <li>Paste the token into the <code>Token =</code> line in <code>config/options.ini</code></li>
+                            <li>Remove the semicolon (<code>;</code>) at the beginning of the line if present</li>
+                        </ol>
+                        
+                        <p><strong>Why it's required:</strong> The token is the bot's password - without it, Discord cannot authenticate your bot account. The bot will fail to start and will not be able to connect to any Discord servers without a valid token.</p>
+                        
+                        <p><strong>Example value:</strong></p>
+                        <pre><code>[Credentials]
+Token = Your.Bot.Token.Here.Example123456789</code></pre>
+                        
+                        <p class="warning"><strong>Security Note:</strong> Never share your token publicly. If compromised, immediately reset it in the Discord Developer Portal.</p>
+                        
+                        <h3>2. Permissions.OwnerID</h3>
+                        <p><strong>What it does:</strong> Sets the Discord user ID of the bot owner who has full administrative control over all bot commands and settings.</p>
+                        
+                        <p><strong>How to get/set the value:</strong></p>
+                        <ol>
+                            <li>Enable Developer Mode in Discord: <code>User Settings → Appearance → Developer Mode</code></li>
+                            <li>Right-click your Discord username and select "Copy User ID"</li>
+                            <li>Paste the ID into the <code>OwnerID =</code> line in <code>config/options.ini</code></li>
+                            <li>Alternatively, set <code>OwnerID = auto</code> to automatically use the application creator's ID</li>
+                        </ol>
+                        
+                        <p><strong>Why it's required:</strong> The OwnerID determines who has ultimate control over the bot. Without setting this, no user will have owner-level permissions to manage the bot, configure settings, or access owner-only commands. The bot can technically start with "auto", but you should set a specific ID for production use.</p>
+                        
+                        <p><strong>Example values:</strong></p>
+                        <pre><code>[Permissions]
+OwnerID = 120330980597825536
+; or
+OwnerID = auto</code></pre>
+                        
+                        <p class="note"><strong>Note:</strong> Only one owner can be set. For additional users with permissions, use <code>permissions.ini</code> file.</p>
+                        
+                        <h3>3. Chat.CommandPrefix</h3>
+                        <p><strong>What it does:</strong> Defines the character or text that must precede all bot commands in Discord chat.</p>
+                        
+                        <p><strong>How to get/set the value:</strong></p>
+                        <ol>
+                            <li>Open <code>config/options.ini</code></li>
+                            <li>Find the <code>CommandPrefix =</code> line under the <code>[Chat]</code> section</li>
+                            <li>Replace the value with your desired prefix</li>
+                            <li>Common prefixes include: <code>!</code>, <code>?</code>, <code>?</code>, <code>$</code>, or custom text like <code>music</code></li>
+                        </ol>
+                        
+                        <p><strong>Why it's required:</strong> The command prefix tells Discord which messages should be processed as bot commands versus normal chat. Without a prefix, the bot cannot distinguish commands from regular messages. All bot commands require this prefix to be recognized.</p>
+                        
+                        <p><strong>Example values:</strong></p>
+                        <pre><code>[Chat]
+CommandPrefix = !
+; or
+CommandPrefix = ?
+; or
+CommandPrefix = music</code></pre>
+                        
+                        <p><strong>Usage examples:</strong></p>
+                        <ul>
+                            <li>With <code>CommandPrefix = !</code>: Use <code>!play https://youtube.com/watch?v=...</code></li>
+                            <li>With <code>CommandPrefix = ?</code>: Use <code>?skip</code></li>
+                            <li>With <code>CommandPrefix = music</code>: Use <code>music pause</code></li>
+                        </ul>
+                        
+                        <h3>Optional but Recommended Settings</h3>
+                        <p>While the following settings are not strictly required, they are highly recommended for proper bot operation:</p>
+                        
+                        <h4>AutoSummon</h4>
+                        <pre><code>[MusicBot]
+AutoSummon = yes</pre></pre>
+                        <p>Automatically joins the owner's voice channel on startup. Set to <code>no</code> if you don't want this behavior.</p>
+                        
+                        <h4>UseAutoPlaylist</h4>
+                        <pre><code>[MusicBot]
+UseAutoPlaylist = yes</pre></pre>
+                        <p>Start playing songs from autoplaylist.txt after joining a channel. Disable if you don't want automatic playback.</p>
+                        
+                        <h4>SaveVideos</h4>
+                        <pre><code>[MusicBot]
+SaveVideos = yes</pre></pre>
+                        <p>Cache downloaded audio files for faster playback. Set to <code>no</code> to disable caching (not recommended).</p>
+                        
+                        <h3>Configuration Checklist</h3>
+                        <p>Before starting your bot, verify:</p>
+                        <ul>
+                            <li>☐ Token is set and valid</li>
+                            <li>☐ OwnerID is set (not "auto" for production)</li>
+                            <li>☐ CommandPrefix is configured</li>
+                            <li>☐ Bot has been invited to your server via OAuth2 URL</li>
+                            <li>☐ Bot has MESSAGE CONTENT INTENT enabled in Discord Developer Portal</li>
+                            <li>☐ Bot has proper permissions in voice channels (Connect, Speak)</li>
+                        </ul>
+                    </div>
+                `
+            },
+            
+            'discord-token-guide': {
+                title: 'How to Get Your Discord Bot Token',
+                meta: 'Step-by-step guide for obtaining a Discord bot token',
+                content: `
+                    <div class="doc-section">
+                        <h2>How to Get Your Discord Bot Token - Complete Guide</h2>
+                        <p class="intro">Follow this step-by-step guide to create a Discord bot application and obtain your bot token. This is required to configure MusicBot.</p>
+                        
+                        <h3>Step 1: Go to Discord Developer Portal</h3>
+                        <ol>
+                            <li>Open your web browser and navigate to <a href="https://discord.com/developers/applications" target="_blank">https://discord.com/developers/applications</a></li>
+                            <li>Log in with your Discord account if prompted</li>
+                        </ol>
+                        
+                        <p>You will see the Applications page showing any existing applications you have created.</p>
+                        
+                        <h3>Step 2: Create a New Application</h3>
+                        <ol>
+                            <li>Click the <strong>"New Application"</strong> button in the top-right corner of the page</li>
+                            <li>A popup will appear asking for the application name</li>
+                            <li>Enter a name for your bot (e.g., "MusicBot" or any name you prefer)</li>
+                            <li>Click <strong>"Create"</strong></li>
+                        </ol>
+                        
+                        <p>Your application is now created and you'll be taken to the General Information page.</p>
+                        
+                        <h3>Step 3: Create the Bot User</h3>
+                        <ol>
+                            <li>In the left sidebar, click on the <strong>"Bot"</strong> tab</li>
+                            <li>Click the <strong>"Add Bot"</strong> button</li>
+                            <li>Confirm by clicking <strong>"Yes, do it!"</strong> in the popup</li>
+                        </ol>
+                        
+                        <p>Your bot user is now created and you'll see the bot settings page.</p>
+                        
+                        <h3>Step 4: Configure Bot Settings</h3>
+                        <ol>
+                            <li><strong>Bot Username:</strong> You can change the bot's display name here if desired</li>
+                            <li><strong>Icon:</strong> Click "Upload" to add a custom icon for your bot (optional)</li>
+                            <li><strong>Reset Token:</strong> Under the "TOKEN" section, click <strong>"Reset Token"</strong> (or "Copy Token" if available)</li>
+                            <li><strong>Important:</strong> Discord will show you your token ONLY once. Copy it immediately and store it securely!</li>
+                        </ol>
+                        
+                        <div class="warning-box">
+                            <p><strong>⚠️ Token Security:</strong> Your bot token is like a password. Never share it publicly, commit it to public repositories, or post it in chats. If compromised, immediately reset it in the Developer Portal.</p>
+                        </div>
+                        
+                        <h3>Step 5: Enable Required Intents</h3>
+                        <p>Scroll down to the "Privileged Gateway Intents" section and enable the following:</p>
+                        
+                        <ol>
+                            <li><strong>MESSAGE CONTENT INTENT</strong>:
+                                <ul>
+                                    <li>Toggle the switch to enable</li>
+                                    <li><strong>Why required:</strong> MusicBot needs this to read command messages and process your commands</li>
+                                    <li>Without this, the bot cannot detect when you type commands like <code>!play</code></li>
+                                </ul>
+                            </li>
+                            <li><strong>SERVER MEMBERS INTENT</strong> (Optional but recommended):
+                                <ul>
+                                    <li>Toggle the switch to enable</li>
+                                    <li><strong>Why useful:</strong> Allows the bot to access member list and presence information</li>
+                                    <li>May be needed for certain features like member-based permissions</li>
+                                </ul>
+                            </li>
+                        </ol>
+                        
+                        <div class="note-box">
+                            <p><strong>Note:</strong> After enabling intents, click <strong>"Save Changes"</strong> at the bottom of the page.</p>
+                        </div>
+                        
+                        <h3>Step 6: Configure OAuth2 URL for Inviting</h3>
+                        <ol>
+                            <li>In the left sidebar, click on <strong>"OAuth2"</strong> → <strong>"URL Generator"</strong></li>
+                            <li>Under "SCOPES", select <strong>"bot"</strong></li>
+                            <li>Under "BOT PERMISSIONS", select the following permissions:
+                                <ul>
+                                    <li><strong>Send Messages</strong> - Required for bot to respond</li>
+                                    <li><strong>Embed Links</strong> - Required for formatted messages</li>
+                                    <li><strong>Connect</strong> - Required to join voice channels</li>
+                                    <li><strong>Speak</strong> - Required to play audio</li>
+                                    <li><strong>Use Voice Activity</strong> - Recommended for voice</li>
+                                    <li><strong>Manage Messages</strong> - Optional, for deleting command messages</li>
+                                    <li><strong>Read Message History</strong> - Recommended for some features</li>
+                                </ul>
+                            </li>
+                            <li>Copy the generated URL at the bottom of the page</li>
+                        </ol>
+                        
+                        <h3>Step 7: Invite Bot to Your Server</h3>
+                        <ol>
+                            <li>Paste the copied URL into your browser's address bar</li>
+                            <li>Select the server you want to add the bot to from the dropdown</li>
+                            <li>Review the permissions list and click <strong>"Authorize"</strong></li>
+                            <li>Complete the CAPTCHA if prompted</li>
+                        </ol>
+                        
+                        <p>Your bot should now appear in the server's member list!</p>
+                        
+                        <h3>Step 8: Copy Your Token to config/options.ini</h3>
+                        <ol>
+                            <li>Open your <code>config/options.ini</code> file</li>
+                            <li>Find the line: <code>Token =</code></li>
+                            <li>Remove the semicolon (<code>;</code>) if present at the start of the line</li>
+                            <li>Paste your token after the equals sign:</li>
+                        </ol>
+                        
+                        <pre><code>[Credentials]
+Token = Your.Bot.Token.Here.Example123456789</code></pre>
+                        
+                        <ol start="6">
+                            <li>Save the file</li>
+                            <li>Restart your MusicBot for changes to take effect</li>
+                        </ol>
+                        
+                        <div class="example-box">
+                            <h4>Example Token Format</h4>
+                            <p>A valid Discord bot token looks like this (DO NOT use this example token):</p>
+                            <pre><code>Your.Bot.Token.Here.Example123456789</code></pre>
+                            <p>Tokens typically have three parts separated by dots:</p>
+                            <ul>
+                                <li>First part: User ID (encoded)</li>
+                                <li>Second part: Timestamp</li>
+                                <li>Third part: Random hash</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>Security Best Practices</h3>
+                        
+                        <div class="security-list">
+                            <h4>Do's:</h4>
+                            <ul>
+                                <li>✅ Store your token in environment variables or secure config files</li>
+                                <li>✅ Use <code>.gitignore</code> to prevent committing config files to Git</li>
+                                <li>✅ Reset your token immediately if you suspect it's compromised</li>
+                                <li>✅ Limit bot permissions to only what's necessary</li>
+                                <li>✅ Enable 2FA on your Discord account</li>
+                                <li>✅ Regularly audit which servers your bot is in</li>
+                            </ul>
+                            
+                            <h4>Don'ts:</h4>
+                            <ul>
+                                <li>❌ Never share your token in public channels or forums</li>
+                                <li>❌ Don't commit tokens to GitHub or other public repositories</li>
+                                <li>❌ Avoid pasting tokens in Discord chats (even private)</li>
+                                <li>❌ Don't use the same token across multiple bot instances</li>
+                                <li>❌ Never enter your token on untrusted websites</li>
+                            </ul>
+                        </div>
+                        
+                        <h3>Troubleshooting</h3>
+                        
+                        <table class="doc-table">
+                            <thead>
+                                <tr>
+                                    <th>Problem</th>
+                                    <th>Solution</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>"Invalid Token" error</td>
+                                    <td>Reset your token in Developer Portal and update config file</td>
+                                </tr>
+                                <tr>
+                                    <td>Bot won't respond to commands</td>
+                                    <td>Ensure MESSAGE CONTENT INTENT is enabled and saved</td>
+                                </tr>
+                                <tr>
+                                    <td>Bot can't join voice channels</td>
+                                    <td>Check bot has "Connect" and "Speak" permissions in voice channel</td>
+                                </tr>
+                                <tr>
+                                    <td>Bot appears offline</td>
+                                    <td>Verify token is correctly set in options.ini and bot is running</td>
+                                </tr>
+                                <tr>
+                                    <td>Can't enable intents</td>
+                                    <td>Bot may need verification if in 100+ servers</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h3>Quick Reference</h3>
+                        <div class="quick-ref">
+                            <p><strong>Discord Developer Portal:</strong> <a href="https://discord.com/developers/applications" target="_blank">https://discord.com/developers/applications</a></p>
+                            <p><strong>Required Intents:</strong> MESSAGE CONTENT INTENT (mandatory for MusicBot)</p>
+                            <p><strong>Minimum Permissions:</strong> Send Messages, Embed Links, Connect, Speak</p>
+                            <p><strong>Config Location:</strong> <code>config/options.ini</code> → <code>[Credentials] Token =</code></p>
+                        </div>
+                    </div>
+                `
+            },
+            
             'musicbot-class': {
                 title: 'MusicBot Class',
                 meta: 'Main bot class that extends discord.Client',
@@ -1086,6 +1734,103 @@ complex_aliases: ComplexAliases = {}</div>
                 `
             },
             
+            'discord-token-guide': {
+                title: 'Getting Your Discord Bot Token',
+                meta: 'Step-by-step guide to creating and configuring your Discord bot',
+                content: `
+                    <h3>Overview</h3>
+                    <p>This guide walks you through creating a Discord bot application, generating a bot user, obtaining the token, and configuring the required intents for MusicBot.</p>
+                    
+                    <h3>Step 1: Create a Discord Application</h3>
+                    <ol>
+                        <li>Go to the <a href="https://discord.com/developers/applications" target="_blank">Discord Developer Portal</a></li>
+                        <li>Click the <strong>New Application</strong> button in the top-right corner</li>
+                        <li>Enter a name for your application (e.g., "MusicBot") and click <strong>Create</strong></li>
+                        <li>You will be taken to the application's dashboard</li>
+                    </ol>
+                    
+                    <h3>Step 2: Create a Bot User</h3>
+                    <ol>
+                        <li>In the left sidebar, click on <strong>Bot</strong></li>
+                        <li>Click the <strong>Add Bot</strong> button</li>
+                        <li>Confirm by clicking <strong>Yes, do it!</strong></li>
+                        <li>Your bot user is now created</li>
+                    </ol>
+                    
+                    <h3>Step 3: Get Your Bot Token</h3>
+                    <ol>
+                        <li>Under the <strong>Bot</strong> section, find the <strong>Token</strong> section</li>
+                        <li>Click the <strong>Reset Token</strong> (or <strong>View Token</strong> if available) button</li>
+                        <li>Discord will show you a warning - click <strong>Yes, do it!</strong></li>
+                        <li>Your bot token will be displayed - click the <strong>Copy</strong> button next to it</li>
+                        <li><strong>Important:</strong> Save this token securely. Discord only shows it once!</li>
+                    </ol>
+                    
+                    <h3>Step 4: Enable Required Intents</h3>
+                    <p>MusicBot requires specific intents to function properly. In the <strong>Bot</strong> section:</p>
+                    <ol>
+                        <li>Scroll down to <strong>Privileged Gateway Intents</strong></li>
+                        <li>Enable the following intents:</li>
+                        <ul>
+                            <li><strong>Server Members Intent</strong> - Required for checking server members and permissions</li>
+                            <li><strong>Message Content Intent</strong> - Required to read command messages</li>
+                            <li><strong>Presence Intent</strong> - Optional but recommended for user presence tracking</li>
+                        </ul>
+                        <li>Click <strong>Save Changes</strong> at the bottom of the page</li>
+                    </ol>
+                    
+                    <h3>Step 5: Configure OAuth2 for Bot Invitation</h3>
+                    <ol>
+                        <li>In the left sidebar, click on <strong>OAuth2</strong> → <strong>URL Generator</strong></li>
+                        <li>Under <strong>Scopes</strong>, select <strong>bot</strong></li>
+                        <li>Under <strong>Bot Permissions</strong>, select the following permissions:</li>
+                        <ul>
+                            <li><strong>Send Messages</strong> - To respond to commands</li>
+                            <li><strong>Embed Links</strong> - For rich command responses</li>
+                            <li><strong>Connect</strong> - To connect to voice channels</li>
+                            <li><strong>Speak</strong> - To play music</li>
+                            <li><strong>Use Slash Commands</strong> - For slash command support</li>
+                            <li><strong>Manage Messages</strong> - For cleaning up command responses</li>
+                            <li><strong>Mute Members</strong> - For muting users in voice channels (optional)</li>
+                            <li><strong>Deafen Members</strong> - For deafening users (optional)</li>
+                        </ul>
+                        <li>Copy the generated URL at the bottom</li>
+                        <li>Paste the URL into your browser to invite the bot to your server</li>
+                    </ol>
+                    
+                    <h3>Step 6: Add the Token to MusicBot Configuration</h3>
+                    <ol>
+                        <li>Open your <code>config/options.ini</code> file</li>
+                        <li>Find the <code>[Credentials]</code> section</li>
+                        <li>Paste your token into the <code>Token</code> field:</li>
+                    </ol>
+                    <div class="code-block">
+[Credentials]
+Token = your-bot-token-here
+                    </div>
+                    <ol start="4">
+                        <li>Save the file</li>
+                        <li>Start the bot using <code>python run.py</code></li>
+                    </ol>
+                    
+                    <h3>Security Tips</h3>
+                    <ul>
+                        <li><strong>Never share your token</strong> - Treat it like a password</li>
+                        <li><strong>Don't commit your token</strong> - Add <code>config/options.ini</code> to your .gitignore</li>
+                        <li><strong>Regenerate if compromised</strong> - Use the Reset Token button if your token is exposed</li>
+                        <li><strong>Use environment variables</strong> - For production, consider using environment variables instead of hardcoding</li>
+                    </ul>
+                    
+                    <h3>Troubleshooting</h3>
+                    <ul>
+                        <li><strong>Bot doesn't show up in server</strong> - Make sure you invited it with the OAuth2 URL generator</li>
+                        <li><strong>Commands not working</strong> - Check that Message Content Intent is enabled</li>
+                        <li><strong>Bot can't connect to voice</strong> - Verify the bot has the Connect and Speak permissions</li>
+                        <li><strong>Invalid Token error</strong> - Make sure you copied the token correctly without extra spaces</li>
+                    </ul>
+                `
+            },
+
             'main-config': {
                 title: 'Main Config (options.ini)',
                 meta: 'Primary configuration file with bot settings',
@@ -1096,7 +1841,7 @@ complex_aliases: ComplexAliases = {}</div>
                     <h3>Credentials Section</h3>
                     <ul>
                         <li><strong>Token</strong> - String - <em>Required</em>
-                            <p>Your Discord bot account token. Required to run the bot.</p>
+                            <p>Your Discord bot account token. Required to run the bot. <a href="#discord-token-guide">See guide for obtaining your token</a>.</p>
                         </li>
                         <li><strong>Spotify_ClientID</strong> - String - <em>Empty (optional)</em>
                             <p>Your Spotify developer app Client ID. If empty, the bot uses public credentials.</p>
@@ -1663,14 +2408,51 @@ blacklist</div>
         document.querySelector('.search-box').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const items = document.querySelectorAll('.doc-item');
+            const categories = document.querySelectorAll('.category');
             
+            // Reset all items first
             items.forEach(item => {
-                const target = item.dataset.target;
-                if (docs[target]) {
-                    const content = docs[target].title.toLowerCase() + ' ' + docs[target].meta.toLowerCase() + ' ' + docs[target].content.toLowerCase();
-                    item.style.display = content.includes(query) ? 'block' : 'none';
-                }
+                item.style.display = 'block';
             });
+            
+            // Reset all categories
+            categories.forEach(cat => {
+                cat.style.display = 'block';
+                cat.classList.remove('expanded');
+                const content = cat.querySelector('.category-content');
+                if (content) content.style.maxHeight = null;
+            });
+            
+            if (query.length > 0) {
+                // Hide categories with no matches
+                categories.forEach(cat => {
+                    const catItems = cat.querySelectorAll('.doc-item');
+                    let hasMatch = false;
+                    
+                    catItems.forEach(item => {
+                        const target = item.dataset.target;
+                        if (docs[target]) {
+                            const content = docs[target].title.toLowerCase() + ' ' + docs[target].meta.toLowerCase() + ' ' + docs[target].content.toLowerCase();
+                            if (!content.includes(query)) {
+                                item.style.display = 'none';
+                            } else {
+                                hasMatch = true;
+                            }
+                        }
+                    });
+                    
+                    if (!hasMatch) {
+                        cat.style.display = 'none';
+                    } else {
+                        // Auto-expand category with matches
+                        const content = cat.querySelector('.category-content');
+                        if (content) {
+                            cat.classList.add('expanded');
+                            content.style.maxHeight = content.scrollHeight + 'px';
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>
