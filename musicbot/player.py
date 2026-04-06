@@ -570,10 +570,18 @@ class MusicPlayer(EventEmitter, Serializable):
                 is_disconnect_error = True
                 log.debug("Detected disconnect error pattern in: '%s'", error_str)
 
-        # Also check if player was auto-paused - always preserve state in this case
+        # Also check if player was auto-paused - preserve state only if voice is disconnected
         # This handles: channel empty -> auto-pause -> disconnect -> should resume
-        if hasattr(self, "paused_auto") and self.paused_auto:
-            log.debug("Player was auto-paused, treating as disconnect error")
+        # But does NOT treat normal song completion as disconnect when channel has users
+        if (
+            hasattr(self, "paused_auto")
+            and self.paused_auto
+            and self.voice_client
+            and not self.voice_client.is_connected()
+        ):
+            log.debug(
+                "Player was auto-paused and voice is disconnected, treating as disconnect error"
+            )
             is_disconnect_error = True
 
         log.debug(
@@ -854,6 +862,12 @@ class MusicPlayer(EventEmitter, Serializable):
                 # I need to add ytdl hooks
                 self.state = MusicPlayerState.PLAYING
                 self._current_entry = entry
+
+                # Reset paused_auto when starting new playback
+                # This prevents stale paused_auto state from causing issues
+                if hasattr(self, "paused_auto") and self.paused_auto:
+                    log.debug("Resetting paused_auto on new playback start")
+                    self.paused_auto = False
 
                 # Only create stderr thread for FFmpeg-based sources
                 # InMemoryAudioSource doesn't use FFmpeg, so no stderr to read
