@@ -28,6 +28,10 @@ else:
 # Type alias
 EntryTypes = Union[URLPlaylistEntry, StreamPlaylistEntry, LocalFilePlaylistEntry]
 
+# Audio format constant for 48kHz stereo 16-bit PCM
+# 48000 samples/sec * 2 channels * 2 bytes/sample * 0.02 sec/frame = 3840 bytes/frame
+AUDIO_BYTES_PER_FRAME = 3840
+
 log = logging.getLogger(__name__)
 
 try:
@@ -69,12 +73,10 @@ class InMemoryAudioSource(AudioSource):
         if start_position > 0:
             self._data.seek(start_position)
 
-        if USE_NUMPY and self._size >= 3840:
-            self._numpy_array = np.frombuffer(
-                self._data.getvalue(), dtype=np.int16
-            ).copy()
-        else:
-            self._numpy_array = None
+        # Note: We intentionally don't create a numpy array here.
+        # np.frombuffer() creates a view into the buffer that can become
+        # dangling if the original bytes object is garbage collected.
+        # The BytesIO object is sufficient for reading audio data.
 
     @property
     def volume(self) -> float:
@@ -87,15 +89,15 @@ class InMemoryAudioSource(AudioSource):
         self._volume = max(0.0, min(value, 2.0))
 
     def read(self) -> bytes:
-        """Read 20ms of audio data (3840 bytes for 48kHz stereo 16-bit PCM)."""
+        """Read 20ms of audio data (AUDIO_BYTES_PER_FRAME bytes for 48kHz stereo 16-bit PCM)."""
         if self._closed:
             return b""
 
         # Discord's audio system expects 20ms frames
-        # For 48kHz stereo 16-bit, that's 3840 bytes per frame
-        # (48000 samples/sec * 0.02 sec * 2 channels * 2 bytes/sample)
-        frame_size = 3840
+        # For 48kHz stereo 16-bit, that's AUDIO_BYTES_PER_FRAME bytes per frame
+        frame_size = AUDIO_BYTES_PER_FRAME
         data = self._data.read(frame_size)
+        self._position = self._data.tell()
 
         if not data:
             self._closed = True
@@ -127,6 +129,29 @@ class InMemoryAudioSource(AudioSource):
         """Get the number of remaining bytes to read."""
         return self._size - self._position
 
+    @property
+    def session_progress(self) -> float:
+        """Get playback progress time from this session only.
+
+        For InMemoryAudioSource, calculate from bytes read.
+        Each frame is AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds at 48kHz stereo 16-bit.
+        """
+        # Calculate frames read from current position
+        bytes_read = self._position
+        frames_read = bytes_read / AUDIO_BYTES_PER_FRAME
+        return frames_read * 0.02
+
+    @property
+    def progress(self) -> float:
+        """Get total playback progress time including start position."""
+        # Progress = initial position time + session progress
+        initial_position_seconds = 0
+        if hasattr(self, "_initial_position"):
+            initial_position_seconds = (
+                self._initial_position / AUDIO_BYTES_PER_FRAME * 0.02
+            )
+        return initial_position_seconds + self.session_progress
+
     def _apply_volume(self, frame: bytes) -> bytes:
         """Apply volume multiplier to PCM16 audio samples using NumPy."""
         if len(frame) % 2 != 0:
@@ -138,9 +163,14 @@ class InMemoryAudioSource(AudioSource):
         if self._volume == 0.0:
             return b"\x00" * len(frame)
 
-        if USE_NUMPY and len(frame) >= 4:
+        if USE_NUMPY and len(frame) >= 4 and len(frame) % 2 == 0:
             try:
-                arr = np.frombuffer(frame, dtype=np.int16)
+                # Use np.frombuffer().copy() to create an owned array instead of a view.
+                # np.frombuffer() creates a view into the bytes buffer that can become
+                # dangling if the original bytes object is garbage collected or modified.
+                # Using .copy() ensures the numpy array owns its own memory.
+                # Also check that frame length is even (PCM16 requires 2 bytes per sample).
+                arr = np.frombuffer(frame, dtype=np.int16).copy()
                 arr = arr * self._volume
                 arr = np.clip(arr, -32768, 32767)
                 return arr.astype(np.int16).tobytes()
@@ -254,10 +284,10 @@ class SourcePlaybackCounter(AudioSource):
     def progress(self) -> float:
         """Get an approximate playback progress time including initial position."""
         # For InMemoryAudioSource, calculate progress from bytes read
-        # Each frame is 3840 bytes = 0.02 seconds
+        # Each frame is AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds
         return (
             self._start_time
-            + (self._initial_position / 3840 * 0.02)
+            + (self._initial_position / AUDIO_BYTES_PER_FRAME * 0.02)
             + self.session_progress
         )
 
@@ -391,6 +421,16 @@ class MusicPlayer(EventEmitter, Serializable):
         :param new_voice_client: New VoiceClient to use for playback
         :returns: True if successful, False if no current entry or source
         """
+        log.debug(
+            "update_voice_client called - guild=%s, _current_entry=%s, _source=%s, "
+            "memory_data=%s, state=%s",
+            self.voice_client.guild.id if self.voice_client else None,
+            self._current_entry.title if self._current_entry else None,
+            bool(self._source),
+            bool(self._current_entry.memory_data) if self._current_entry else False,
+            self.state,
+        )
+
         if not self._current_entry:
             log.warning("Cannot update voice client: no current entry")
             return False
@@ -507,6 +547,15 @@ class MusicPlayer(EventEmitter, Serializable):
             log.debug("Playback finished, but _current_entry is None.")
             return
 
+        # Debug: Log playback finish details
+        log.debug(
+            "_playback_finished called for guild=%s, entry: %s, error: %s, error_type: %s",
+            self.voice_client.guild.id if self.voice_client else None,
+            entry.title,
+            error,
+            type(error).__name__ if error else "None",
+        )
+
         if self.repeatsong:
             self.playlist.entries.appendleft(entry)
         elif self.loopqueue:
@@ -516,8 +565,23 @@ class MusicPlayer(EventEmitter, Serializable):
         is_disconnect_error = False
         if error and hasattr(error, "args"):
             error_str = str(error)
+            log.debug("Checking error string for disconnect: '%s'", error_str)
             if "Not connected" in error_str or "voice" in error_str.lower():
                 is_disconnect_error = True
+                log.debug("Detected disconnect error pattern in: '%s'", error_str)
+
+        # Also check if player was auto-paused - always preserve state in this case
+        # This handles: channel empty -> auto-pause -> disconnect -> should resume
+        if hasattr(self, "paused_auto") and self.paused_auto:
+            log.debug("Player was auto-paused, treating as disconnect error")
+            is_disconnect_error = True
+
+        log.debug(
+            "Disconnect error detection result: is_disconnect_error=%s, error=%s, paused_auto=%s",
+            is_disconnect_error,
+            error,
+            getattr(self, "paused_auto", "N/A"),
+        )
 
         # For disconnect errors, keep entry and memory for resume
         # For normal completion, cleanup as usual
@@ -555,11 +619,6 @@ class MusicPlayer(EventEmitter, Serializable):
                     entry.title,
                     entry_memory_size,
                 )
-
-        # if an error was set, report it and return...
-        if error:
-            self.emit("error", player=self, entry=entry, ex=error)
-            return
 
         # if an error was set, report it and return...
         if error:
@@ -686,7 +745,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 # Determine audio source: use in-memory if available and config is enabled
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     # Calculate position to resume from (in bytes)
-                    # For 48kHz stereo 16-bit: 3840 bytes = 0.02 seconds (20ms frame)
+                    # For 48kHz stereo 16-bit: AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds
                     # Position in bytes = progress_seconds * 48000 * 2 * 2
                     # Simplified: progress_seconds * 192000 = bytes
                     progress_bytes = 0
@@ -762,41 +821,31 @@ class MusicPlayer(EventEmitter, Serializable):
                         log.error("Failed to reload opus: %s", e, exc_info=True)
                         raise RuntimeError("Opus library is not loaded") from e
 
-                if not self.voice_client.is_connected():
-                    log.warning(
-                        "Voice client not connected, attempting reconnection for entry: %s",
-                        entry.title,
-                    )
-
-                    # Try to get a fresh voice client
-                    try:
-                        new_voice = await self.bot.get_voice_client(
-                            self.voice_client.channel
-                        )
-                        if not self.update_voice_client(new_voice):
-                            log.warning(
-                                "Failed to update voice client, waiting for reconnection"
-                            )
-                            return
-                    except Exception as e:
-                        log.warning(
-                            "Reconnection attempt failed, deferring to auto-pause handler: %s",
-                            e,
-                        )
-                        return
-
                 # Log DAVE/E2EE status before playing
                 try:
-                    dave_version = getattr(self.voice_client._connection, 'dave_protocol_version', 0)
-                    encryption_mode = getattr(self.voice_client._connection, 'mode', 'unknown')
+                    dave_version = getattr(
+                        self.voice_client._connection, "dave_protocol_version", 0
+                    )
+                    encryption_mode = getattr(
+                        self.voice_client._connection, "mode", "unknown"
+                    )
                     log.voicedebug(  # type: ignore[attr-defined]
                         "Starting playback - DAVE version: %s, Encryption: %s, Channel: %s",
                         dave_version,
                         encryption_mode,
-                        self.voice_client.channel.name
+                        self.voice_client.channel.name,
                     )
                 except AttributeError:
                     log.debug("Could not retrieve DAVE protocol information")
+
+                # Check voice connection before attempting playback
+                if not self.voice_client.is_connected():
+                    log.warning(
+                        "Voice client not connected for entry: %s, "
+                        "waiting for reconnection handler in bot",
+                        entry.title,
+                    )
+                    return
 
                 self.voice_client.play(self._source, after=self._playback_finished)
 
@@ -821,6 +870,39 @@ class MusicPlayer(EventEmitter, Serializable):
 
                 self.emit("play", player=self, entry=entry)
 
+                # Check if voice disconnected during event handler
+                # This handles the race condition where bot.py:on_player_play
+                # returns early due to disconnection
+                if not self.voice_client or not self.voice_client.is_connected():
+                    log.warning(
+                        "Voice disconnected during play event for entry: %s, aborting playback",
+                        entry.title,
+                    )
+                    self.state = MusicPlayerState.STOPPED
+                    self._current_entry = None
+                    self._source = None
+                    self._kill_current_player()
+
+                    # Release in-memory audio data if we had it
+                    if entry.memory_data is not None:
+                        entry_memory_size = entry.memory_size
+                        entry.memory_data = None
+                        entry.memory_size = 0
+                        self.bot.filecache.release_memory(entry_memory_size)
+                        log.debug(
+                            "Released in-memory audio for: %s (%d bytes)",
+                            entry.title,
+                            entry_memory_size,
+                        )
+
+                    self.emit(
+                        "error",
+                        player=self,
+                        entry=entry,
+                        ex=Exception("Voice connection lost during playback start"),
+                    )
+                    return
+
     async def _handle_file_cleanup(self, entry: EntryTypes) -> None:
         """
         A helper used to clean up media files via call-later, when file
@@ -834,36 +916,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 )
             else:
                 log.debug("Deleting file:  %s", os.path.relpath(entry.filename))
-                filename = entry.filename
-                for _ in range(3):
-                    try:
-                        os.unlink(filename)
-                        log.debug("File deleted:  %s", filename)
-                        break
-                    except PermissionError as e:
-                        if e.errno == 32:  # File is in use
-                            log.warning("Cannot delete file, it is currently in use.")
-                        else:
-                            log.warning(
-                                "Cannot delete file due to a permissions error.",
-                                exc_info=True,
-                            )
-                    except FileNotFoundError:
-                        log.warning(
-                            "Cannot delete file, it was not found.",
-                            exc_info=True,
-                        )
-                        break
-                    except (OSError, IsADirectoryError):
-                        log.warning(
-                            "Error while trying to delete file.",
-                            exc_info=True,
-                        )
-                        break
-                else:
-                    log.debug(
-                        "[Config:SaveVideos] Could not delete file, giving up and moving on"
-                    )
+                await self.bot.filecache.safe_delete(entry.filename)
 
     def __json__(self) -> Dict[str, Any]:
         return self._enclose_json(
