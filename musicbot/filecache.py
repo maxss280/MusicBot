@@ -6,7 +6,7 @@ import os
 import pathlib
 import shutil
 import time
-from typing import TYPE_CHECKING, Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Tuple, Union
 
 from .constants import DATA_FILE_CACHEMAP, DEFAULT_DATA_DIR
 from .utils import format_size_from_bytes
@@ -125,6 +125,40 @@ class AudioFileCache:
         except (OSError, PermissionError, IsADirectoryError):
             log.warning("Failed to delete cache file:  %s", path, exc_info=True)
             return False
+
+    def safe_delete(self, path: Union[str, pathlib.Path]) -> bool:
+        """
+        Robust file deletion with retry logic for 'file in use' scenarios.
+        Accepts either a string path or pathlib.Path.
+
+        Returns True if deletion succeeded or file was already missing,
+        False if deletion failed after retries.
+        """
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+        for _ in range(3):
+            try:
+                path.unlink()
+                log.debug("File deleted:  %s", path)
+                return True
+            except FileNotFoundError:
+                return True
+            except PermissionError as e:
+                if e.errno == 32:
+                    log.warning("Cannot delete %s, file is in use, retrying...", path)
+                    time.sleep(0.1)
+                else:
+                    log.warning(
+                        "Cannot delete %s due to a permissions error.",
+                        path,
+                        exc_info=True,
+                    )
+                    return False
+            except (OSError, IsADirectoryError):
+                log.warning("Error while trying to delete %s.", path, exc_info=True)
+                return False
+        log.debug("Could not delete %s, giving up and moving on", path)
+        return False
 
     def _delete_cache_dir(self) -> bool:
         """

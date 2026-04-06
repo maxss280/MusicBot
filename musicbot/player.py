@@ -28,6 +28,10 @@ else:
 # Type alias
 EntryTypes = Union[URLPlaylistEntry, StreamPlaylistEntry, LocalFilePlaylistEntry]
 
+# Audio format constant for 48kHz stereo 16-bit PCM
+# 48000 samples/sec * 2 channels * 2 bytes/sample * 0.02 sec/frame = 3840 bytes/frame
+AUDIO_BYTES_PER_FRAME = 3840
+
 log = logging.getLogger(__name__)
 
 try:
@@ -90,9 +94,8 @@ class InMemoryAudioSource(AudioSource):
             return b""
 
         # Discord's audio system expects 20ms frames
-        # For 48kHz stereo 16-bit, that's 3840 bytes per frame
-        # (48000 samples/sec * 0.02 sec * 2 channels * 2 bytes/sample)
-        frame_size = 3840
+        # For 48kHz stereo 16-bit, that's AUDIO_BYTES_PER_FRAME bytes per frame
+        frame_size = AUDIO_BYTES_PER_FRAME
         data = self._data.read(frame_size)
         self._position = self._data.tell()
 
@@ -131,11 +134,11 @@ class InMemoryAudioSource(AudioSource):
         """Get playback progress time from this session only.
 
         For InMemoryAudioSource, calculate from bytes read.
-        Each frame is 3840 bytes = 0.02 seconds at 48kHz stereo 16-bit.
+        Each frame is AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds at 48kHz stereo 16-bit.
         """
         # Calculate frames read from current position
         bytes_read = self._position
-        frames_read = bytes_read / 3840
+        frames_read = bytes_read / AUDIO_BYTES_PER_FRAME
         return frames_read * 0.02
 
     @property
@@ -144,7 +147,9 @@ class InMemoryAudioSource(AudioSource):
         # Progress = initial position time + session progress
         initial_position_seconds = 0
         if hasattr(self, "_initial_position"):
-            initial_position_seconds = self._initial_position / 3840 * 0.02
+            initial_position_seconds = (
+                self._initial_position / AUDIO_BYTES_PER_FRAME * 0.02
+            )
         return initial_position_seconds + self.session_progress
 
     def _apply_volume(self, frame: bytes) -> bytes:
@@ -279,10 +284,10 @@ class SourcePlaybackCounter(AudioSource):
     def progress(self) -> float:
         """Get an approximate playback progress time including initial position."""
         # For InMemoryAudioSource, calculate progress from bytes read
-        # Each frame is 3840 bytes = 0.02 seconds
+        # Each frame is AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds
         return (
             self._start_time
-            + (self._initial_position / 3840 * 0.02)
+            + (self._initial_position / AUDIO_BYTES_PER_FRAME * 0.02)
             + self.session_progress
         )
 
@@ -911,36 +916,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 )
             else:
                 log.debug("Deleting file:  %s", os.path.relpath(entry.filename))
-                filename = entry.filename
-                for _ in range(3):
-                    try:
-                        os.unlink(filename)
-                        log.debug("File deleted:  %s", filename)
-                        break
-                    except PermissionError as e:
-                        if e.errno == 32:  # File is in use
-                            log.warning("Cannot delete file, it is currently in use.")
-                        else:
-                            log.warning(
-                                "Cannot delete file due to a permissions error.",
-                                exc_info=True,
-                            )
-                    except FileNotFoundError:
-                        log.warning(
-                            "Cannot delete file, it was not found.",
-                            exc_info=True,
-                        )
-                        break
-                    except (OSError, IsADirectoryError):
-                        log.warning(
-                            "Error while trying to delete file.",
-                            exc_info=True,
-                        )
-                        break
-                else:
-                    log.debug(
-                        "[Config:SaveVideos] Could not delete file, giving up and moving on"
-                    )
+                self.bot.filecache.safe_delete(entry.filename)
 
     def __json__(self) -> Dict[str, Any]:
         return self._enclose_json(
