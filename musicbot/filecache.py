@@ -138,7 +138,7 @@ class AudioFileCache:
             path = pathlib.Path(path)
         for _ in range(3):
             try:
-                path.unlink()
+                await asyncio.to_thread(path.unlink)
                 log.debug("File deleted:  %s", path)
                 return True
             except FileNotFoundError:
