@@ -89,7 +89,7 @@ class InMemoryAudioSource(AudioSource):
         self._volume = max(0.0, min(value, 2.0))
 
     def read(self) -> bytes:
-        """Read 20ms of audio data (3840 bytes for 48kHz stereo 16-bit PCM)."""
+        """Read 20ms of audio data (AUDIO_BYTES_PER_FRAME bytes for 48kHz stereo 16-bit PCM)."""
         if self._closed:
             return b""
 
@@ -745,7 +745,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 # Determine audio source: use in-memory if available and config is enabled
                 if self.bot.config.load_audio_into_memory and entry.memory_data:
                     # Calculate position to resume from (in bytes)
-                    # For 48kHz stereo 16-bit: 3840 bytes = 0.02 seconds (20ms frame)
+                    # For 48kHz stereo 16-bit: AUDIO_BYTES_PER_FRAME bytes = 0.02 seconds
                     # Position in bytes = progress_seconds * 48000 * 2 * 2
                     # Simplified: progress_seconds * 192000 = bytes
                     progress_bytes = 0
@@ -916,7 +916,7 @@ class MusicPlayer(EventEmitter, Serializable):
                 )
             else:
                 log.debug("Deleting file:  %s", os.path.relpath(entry.filename))
-                self.bot.filecache.safe_delete(entry.filename)
+                await self.bot.filecache.safe_delete(entry.filename)
 
     def __json__(self) -> Dict[str, Any]:
         return self._enclose_json(

@@ -8499,14 +8499,7 @@ class MusicBot(discord.Client):
         if guild.id in self.players:
             self.players.pop(guild.id).kill()
 
-        ssd = self.server_data.pop(guild.id, None)
-        if ssd:
-            player_event = ssd.get_event("inactive_player_timer")
-            if player_event.is_active() and not player_event.is_set():
-                player_event.set()
-            vc_event = ssd.get_event("inactive_vc_timer")
-            if vc_event.is_active() and not vc_event.is_set():
-                vc_event.set()
+        self.server_data.pop(guild.id, None)
 
     async def on_guild_available(self, guild: discord.Guild) -> None:
         """
