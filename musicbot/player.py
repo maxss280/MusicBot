@@ -214,6 +214,7 @@ class InMemoryAudioSource(AudioSource):
             pass
         self._closed = True
         self._data.close()
+        self._data = None
 
 
 class MusicPlayerState(Enum):
@@ -325,6 +326,7 @@ class MusicPlayer(EventEmitter, Serializable):
         self._current_player: Optional[VoiceClient] = None
         self._current_entry: Optional[EntryTypes] = None
         self._stderr_future: Optional[AsyncFuture] = None
+        self._stderr_thread: Optional[Thread] = None
 
         self._source: Optional[SourcePlaybackCounter] = None
 
@@ -542,6 +544,10 @@ class MusicPlayer(EventEmitter, Serializable):
         ):
             self._stderr_future.set_result(True)
 
+        # Join stderr thread to ensure clean shutdown
+        if self._stderr_thread is not None and self._stderr_thread.is_alive():
+            self._stderr_thread.join(timeout=1.0)
+
         entry = self._current_entry
         if entry is None:
             log.debug("Playback finished, but _current_entry is None.")
@@ -564,9 +570,21 @@ class MusicPlayer(EventEmitter, Serializable):
         # Check if this was a voice disconnect error
         is_disconnect_error = False
         if error and hasattr(error, "args"):
-            error_str = str(error)
+            error_str = str(error).lower()
             log.debug("Checking error string for disconnect: '%s'", error_str)
-            if "Not connected" in error_str or "voice" in error_str.lower():
+            disconnect_patterns = [
+                "not connected to voice",
+                "not connected.",
+                "connection refused",
+                "connection timed out",
+                "connection lost",
+                "connection closed",
+                "connection reset",
+                "connection was closed",
+                "disconnected",
+                "voice state update failed",
+            ]
+            if any(pattern in error_str for pattern in disconnect_patterns):
                 is_disconnect_error = True
                 log.debug("Detected disconnect error pattern in: '%s'", error_str)
 
@@ -874,13 +892,14 @@ class MusicPlayer(EventEmitter, Serializable):
                 if stderr_io is not None:
                     self._stderr_future = asyncio.Future()
 
-                    stderr_thread = Thread(
+                    self._stderr_thread = Thread(
                         target=filter_stderr,
                         args=(stderr_io, self._stderr_future),
                         name="MB_FFmpegStdErrReader",
+                        daemon=True,
                     )
 
-                    stderr_thread.start()
+                    self._stderr_thread.start()
 
                 self.emit("play", player=self, entry=entry)
 
