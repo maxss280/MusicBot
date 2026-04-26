@@ -213,8 +213,9 @@ class InMemoryAudioSource(AudioSource):
         except Exception:
             pass
         self._closed = True
-        self._data.close()
-        self._data = None
+        if self._data is not None:
+            self._data.close()
+            self._data = None
 
 
 class MusicPlayerState(Enum):
@@ -263,7 +264,8 @@ class SourcePlaybackCounter(AudioSource):
         log.noise(  # type: ignore[attr-defined]
             "Cleanup got called on the audio source:  %r", self
         )
-        self._source.cleanup()
+        if self._source is not None:
+            self._source.cleanup()
 
     @property
     def frames(self) -> int:
